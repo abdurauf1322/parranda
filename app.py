@@ -714,11 +714,8 @@ def send_test_push():
     return jsonify({'success': True, 'sentCount': count})
 
 
-@app.route('/')
-def serve_index():
-    index_file = os.path.join(FRONTEND_DIST, 'index.html')
-    if os.path.exists(index_file):
-        return send_from_directory(FRONTEND_DIST, 'index.html')
+@app.route('/api/health')
+def api_health():
     return jsonify({
         'status': 'online',
         'message': 'Uychi Parranda Python API Server is active.',
@@ -732,9 +729,20 @@ def serve_index():
             '/api/inventory',
             '/api/weights',
             '/api/chat',
-            '/api/notes'
+            '/api/notes',
+            '/api/photos',
+            '/api/daily-reports',
+            '/api/push/vapid-public-key'
         ]
     })
+
+
+@app.route('/')
+def serve_index():
+    index_file = os.path.join(FRONTEND_DIST, 'index.html')
+    if os.path.exists(index_file):
+        return send_from_directory(FRONTEND_DIST, 'index.html')
+    return jsonify({'error': 'React frontend build topilmadi. Iltimos frontend papkasida `npm run build` bajaring.'}), 404
 
 
 @app.route('/<path:path>')
