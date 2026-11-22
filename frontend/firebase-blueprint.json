@@ -1,0 +1,403 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Korxona xodimi va profili",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "username": { "type": "string", "maxLength": 128 },
+        "fullName": { "type": "string", "maxLength": 200 },
+        "role": { "type": "string", "maxLength": 50 },
+        "phone": { "type": "string", "maxLength": 50 },
+        "avatarUrl": { "type": "string", "maxLength": 1000 },
+        "hireDate": { "type": "string", "maxLength": 50 },
+        "department": { "type": "string", "maxLength": 100 },
+        "isActive": { "type": "boolean" },
+        "updatedAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id", "fullName", "role"]
+    },
+    "PersonalNote": {
+      "title": "PersonalNote",
+      "description": "Foydalanuvchining shaxsiy eslatmasi - faqat o'ziga ko'rinadi",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "authorName": { "type": "string", "maxLength": 200 },
+        "title": { "type": "string", "maxLength": 300 },
+        "content": { "type": "string", "maxLength": 5000 },
+        "category": { "type": "string", "enum": ["ish", "eslatma", "shaxsiy", "muhim"] },
+        "color": { "type": "string", "enum": ["yellow", "blue", "green", "purple", "rose"] },
+        "isPinned": { "type": "boolean" },
+        "createdAt": { "type": "string", "maxLength": 64 },
+        "updatedAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id", "userId", "title", "content"]
+    },
+    "AttendanceRecord": {
+      "title": "AttendanceRecord",
+      "description": "Xodimlarning kunlik ishga kelish/ketish davomati",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "userName": { "type": "string", "maxLength": 200 },
+        "role": { "type": "string", "maxLength": 50 },
+        "date": { "type": "string", "maxLength": 20 },
+        "checkInTime": { "type": "string", "maxLength": 20 },
+        "checkOutTime": { "type": "string", "maxLength": 20 },
+        "isSubstitution": { "type": "boolean" },
+        "originalWorkerName": { "type": "string", "maxLength": 200 },
+        "substituteWorkerName": { "type": "string", "maxLength": 200 },
+        "status": { "type": "string", "enum": ["keldi", "kechikdi", "orinbosar_bilan", "chiqib_ketdi"] },
+        "notes": { "type": "string", "maxLength": 1000 }
+      },
+      "required": ["id", "userId", "userName", "role", "date", "checkInTime", "status"]
+    },
+    "FarmTask": {
+      "title": "FarmTask",
+      "description": "Fermada biriktirilgan vazifalar",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 300 },
+        "description": { "type": "string", "maxLength": 3000 },
+        "assignedByUserId": { "type": "string", "maxLength": 128 },
+        "assignedByName": { "type": "string", "maxLength": 200 },
+        "assignedByRole": { "type": "string", "maxLength": 50 },
+        "assignedToUserId": { "type": "string", "maxLength": 128 },
+        "assignedToRole": { "type": "string", "maxLength": 50 },
+        "assignedToName": { "type": "string", "maxLength": 200 },
+        "building": { "type": "string", "maxLength": 100 },
+        "priority": { "type": "string", "enum": ["yuqori", "orta", "oddiy"] },
+        "status": { "type": "string", "enum": ["yangi", "jarayonda", "bajarildi", "tasdiqlandi", "rad_etildi"] },
+        "createdAt": { "type": "string", "maxLength": 64 },
+        "dueTime": { "type": "string", "maxLength": 64 },
+        "completedAt": { "type": "string", "maxLength": 64 },
+        "evaluationScore": { "type": "number" },
+        "evaluationNote": { "type": "string", "maxLength": 1000 },
+        "evaluatedByName": { "type": "string", "maxLength": 200 },
+        "photoUrl": { "type": "string", "maxLength": 1000 }
+      },
+      "required": ["id", "title", "assignedByName", "assignedToRole", "status"]
+    },
+    "SlesarMilestone": {
+      "title": "SlesarMilestone",
+      "description": "Slesar texnik tekshiruv vaqtlari va jadvali",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "time": { "type": "string", "maxLength": 20 },
+        "alertTime": { "type": "string", "maxLength": 20 },
+        "title": { "type": "string", "maxLength": 300 },
+        "description": { "type": "string", "maxLength": 2000 },
+        "status": { "type": "string", "enum": ["kutilmoqda", "ogohlantirildi", "bajarildi", "otkazildi"] },
+        "completedAt": { "type": "string", "maxLength": 64 },
+        "notes": { "type": "string", "maxLength": 1000 }
+      },
+      "required": ["id", "time", "alertTime", "title", "status"]
+    },
+    "PhotoReport": {
+      "title": "PhotoReport",
+      "description": "Foto hisobotlar va tekshiruv rasmlari",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "uploaderId": { "type": "string", "maxLength": 128 },
+        "uploaderName": { "type": "string", "maxLength": 200 },
+        "uploaderRole": { "type": "string", "maxLength": 50 },
+        "title": { "type": "string", "maxLength": 300 },
+        "category": { "type": "string", "maxLength": 50 },
+        "building": { "type": "string", "maxLength": 100 },
+        "imageUrl": { "type": "string", "maxLength": 800000 },
+        "timestamp": { "type": "string", "maxLength": 64 },
+        "notes": { "type": "string", "maxLength": 1000 },
+        "status": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["id", "uploaderName", "title", "imageUrl", "timestamp"]
+    },
+    "ChatMessage": {
+      "title": "ChatMessage",
+      "description": "Umumiy jamoa xabarlari va e'lonlar",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "senderId": { "type": "string", "maxLength": 128 },
+        "senderName": { "type": "string", "maxLength": 200 },
+        "senderRole": { "type": "string", "maxLength": 50 },
+        "message": { "type": "string", "maxLength": 3000 },
+        "timestamp": { "type": "string", "maxLength": 64 },
+        "isAnnouncement": { "type": "boolean" },
+        "attachmentUrl": { "type": "string", "maxLength": 1000 },
+        "attachmentType": { "type": "string", "maxLength": 20 }
+      },
+      "required": ["id", "senderName", "message", "timestamp"]
+    },
+    "DailyFactoryReport": {
+      "title": "DailyFactoryReport",
+      "description": "Kunlik tuxum va parranda ko'rsatkichlari",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "date": { "type": "string", "maxLength": 20 },
+        "building": { "type": "string", "maxLength": 100 },
+        "batchNumber": { "type": "string", "maxLength": 100 },
+        "birdsCount": { "type": "number" },
+        "eggsCollectedTotal": { "type": "number" },
+        "eggsCategoryPremium": { "type": "number" },
+        "eggsCategoryFirst": { "type": "number" },
+        "eggsCategorySecond": { "type": "number" },
+        "eggsDamaged": { "type": "number" },
+        "mortalityCount": { "type": "number" },
+        "feedConsumedKg": { "type": "number" },
+        "waterConsumedLiters": { "type": "number" },
+        "avgTemperature": { "type": "number" },
+        "humidityPercent": { "type": "number" },
+        "submittedByName": { "type": "string", "maxLength": 200 },
+        "submittedAt": { "type": "string", "maxLength": 64 },
+        "notes": { "type": "string", "maxLength": 1000 }
+      },
+      "required": ["id", "date", "eggsCollectedTotal"]
+    },
+    "VetDiagnosis": {
+      "title": "VetDiagnosis",
+      "description": "Veterinariya holati va davolash jurnali",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "date": { "type": "string", "maxLength": 20 },
+        "building": { "type": "string", "maxLength": 100 },
+        "birdAgeWeeks": { "type": "number" },
+        "symptoms": { "type": "string", "maxLength": 2000 },
+        "diagnosis": { "type": "string", "maxLength": 2000 },
+        "prescribedTreatment": { "type": "string", "maxLength": 2000 },
+        "medicationName": { "type": "string", "maxLength": 200 },
+        "dosage": { "type": "string", "maxLength": 200 },
+        "courseDurationDays": { "type": "number" },
+        "severity": { "type": "string", "maxLength": 50 },
+        "doctorName": { "type": "string", "maxLength": 200 },
+        "status": { "type": "string", "maxLength": 50 },
+        "photoUrl": { "type": "string", "maxLength": 1000 },
+        "createdAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id", "diagnosis", "doctorName"]
+    },
+    "ElectricityLog": {
+      "title": "ElectricityLog",
+      "description": "Elektr va generator hisob-kitob jurnali",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "date": { "type": "string", "maxLength": 20 },
+        "time": { "type": "string", "maxLength": 20 },
+        "meterReadingKwh": { "type": "number" },
+        "dailyConsumptionKwh": { "type": "number" },
+        "generatorFuelLevelPercent": { "type": "number" },
+        "generatorOilPressure": { "type": "string", "maxLength": 50 },
+        "generatorStatus": { "type": "string", "maxLength": 50 },
+        "meterPhotoUrl": { "type": "string", "maxLength": 1000 },
+        "reportedByName": { "type": "string", "maxLength": 200 },
+        "notes": { "type": "string", "maxLength": 1000 }
+      },
+      "required": ["id", "meterReadingKwh"]
+    },
+    "EggTransportLog": {
+      "title": "EggTransportLog",
+      "description": "Tuxum yetkazib berish reyslari",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "date": { "type": "string", "maxLength": 20 },
+        "time": { "type": "string", "maxLength": 20 },
+        "driverName": { "type": "string", "maxLength": 200 },
+        "vehicleNumber": { "type": "string", "maxLength": 50 },
+        "destination": { "type": "string", "maxLength": 200 },
+        "boxesCount": { "type": "number" },
+        "totalEggsCount": { "type": "number" },
+        "eggCategory": { "type": "string", "maxLength": 50 },
+        "loadingPhotoUrl": { "type": "string", "maxLength": 1000 },
+        "receiptPhotoUrl": { "type": "string", "maxLength": 1000 },
+        "status": { "type": "string", "maxLength": 50 },
+        "notes": { "type": "string", "maxLength": 1000 }
+      },
+      "required": ["id", "driverName", "totalEggsCount"]
+    },
+    "FeedTransportLog": {
+      "title": "FeedTransportLog",
+      "description": "Yem tashish reyslari va plombalari",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "date": { "type": "string", "maxLength": 20 },
+        "time": { "type": "string", "maxLength": 20 },
+        "driverName": { "type": "string", "maxLength": 200 },
+        "vehicleNumber": { "type": "string", "maxLength": 50 },
+        "feedType": { "type": "string", "maxLength": 100 },
+        "tonnage": { "type": "number" },
+        "destinationBuilding": { "type": "string", "maxLength": 100 },
+        "sealNumber": { "type": "string", "maxLength": 100 },
+        "sealPhotoUrl": { "type": "string", "maxLength": 1000 },
+        "unloadingPhotoUrl": { "type": "string", "maxLength": 1000 },
+        "status": { "type": "string", "maxLength": 50 },
+        "notes": { "type": "string", "maxLength": 1000 }
+      },
+      "required": ["id", "driverName", "tonnage"]
+    },
+    "GuardShiftLog": {
+      "title": "GuardShiftLog",
+      "description": "Qorovullik navbatchiligi jurnali",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "date": { "type": "string", "maxLength": 20 },
+        "shiftType": { "type": "string", "maxLength": 50 },
+        "guardName": { "type": "string", "maxLength": 200 },
+        "takeoverTime": { "type": "string", "maxLength": 20 },
+        "handoverTime": { "type": "string", "maxLength": 20 },
+        "handoverToGuardName": { "type": "string", "maxLength": 200 },
+        "perimeterStatus": { "type": "string", "maxLength": 50 },
+        "incidentReport": { "type": "string", "maxLength": 2000 },
+        "surveillancePhotoUrl": { "type": "string", "maxLength": 1000 },
+        "hourlyPhotosCount": { "type": "number" },
+        "lastMonitorCheckTime": { "type": "string", "maxLength": 20 }
+      },
+      "required": ["id", "guardName", "perimeterStatus"]
+    },
+    "GroceryRequest": {
+      "title": "GroceryRequest",
+      "description": "Oshpaz oziq-ovqat talabnomalari",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "date": { "type": "string", "maxLength": 20 },
+        "requestedByName": { "type": "string", "maxLength": 200 },
+        "mealTarget": { "type": "string", "maxLength": 100 },
+        "urgency": { "type": "string", "maxLength": 50 },
+        "status": { "type": "string", "maxLength": 50 },
+        "approvalNote": { "type": "string", "maxLength": 1000 },
+        "approvedByName": { "type": "string", "maxLength": 200 },
+        "createdAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id", "requestedByName", "mealTarget"]
+    },
+    "SanitationTask": {
+      "title": "SanitationTask",
+      "description": "Sanitariya va tozalik nazorati vazifalari",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "zone": { "type": "string", "maxLength": 100 },
+        "title": { "type": "string", "maxLength": 300 },
+        "isCompleted": { "type": "boolean" },
+        "photoUrl": { "type": "string", "maxLength": 1000 },
+        "cleanedByName": { "type": "string", "maxLength": 200 },
+        "completedAt": { "type": "string", "maxLength": 64 },
+        "inspectorApproved": { "type": "boolean" }
+      },
+      "required": ["id", "zone", "title", "isCompleted"]
+    },
+    "ChickenWeightRecord": {
+      "title": "ChickenWeightRecord",
+      "description": "Tovuqlar vaznini o'lchash natijalari",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "cageNumber": { "type": "number" },
+        "chickenNumber": { "type": "number" },
+        "weight": { "type": "number" },
+        "createdAt": { "type": "string", "maxLength": 64 },
+        "branchId": { "type": "string", "maxLength": 128 },
+        "factoryNumber": { "type": "string", "maxLength": 128 }
+      },
+      "required": ["id", "cageNumber", "chickenNumber", "weight", "createdAt", "branchId", "factoryNumber"]
+    },
+    "AuditLog": {
+      "title": "AuditLog",
+      "description": "Tizimdagi muhim o'zgarishlar auditi",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "userName": { "type": "string", "maxLength": 200 },
+        "action": { "type": "string", "maxLength": 200 },
+        "entityType": { "type": "string", "maxLength": 100 },
+        "entityId": { "type": "string", "maxLength": 128 },
+        "timestamp": { "type": "string", "maxLength": 64 },
+        "details": { "type": "string", "maxLength": 2000 }
+      },
+      "required": ["id", "userId", "userName", "action", "entityType", "entityId", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Korxona xodimlari ro'yxati"
+    },
+    "/personal_notes/{noteId}": {
+      "schema": "PersonalNote",
+      "description": "Foydalanuvchilarning shaxsiy eslatmalari"
+    },
+    "/attendance/{attendanceId}": {
+      "schema": "AttendanceRecord",
+      "description": "Kunlik davomat yozuvlari"
+    },
+    "/tasks/{taskId}": {
+      "schema": "FarmTask",
+      "description": "Fermada biriktirilgan vazifalar"
+    },
+    "/slesar_milestones/{milestoneId}": {
+      "schema": "SlesarMilestone",
+      "description": "Slesar texnik tekshiruv vaqtlari"
+    },
+    "/photo_reports/{reportId}": {
+      "schema": "PhotoReport",
+      "description": "Foto hisobotlar"
+    },
+    "/chat_messages/{messageId}": {
+      "schema": "ChatMessage",
+      "description": "Jamoaviy chat va e'lonlar"
+    },
+    "/factory_reports/{reportId}": {
+      "schema": "DailyFactoryReport",
+      "description": "Kunlik zavod va tuxum statistikasi"
+    },
+    "/diagnoses/{diagnosisId}": {
+      "schema": "VetDiagnosis",
+      "description": "Veterinariya tashxis va davolash jurnali"
+    },
+    "/electricity_logs/{logId}": {
+      "schema": "ElectricityLog",
+      "description": "Elektr va energiya hisobotlari"
+    },
+    "/egg_transports/{transportId}": {
+      "schema": "EggTransportLog",
+      "description": "Tuxum logistikasi reyslari"
+    },
+    "/feed_transports/{transportId}": {
+      "schema": "FeedTransportLog",
+      "description": "Yem logistikasi reyslari"
+    },
+    "/guard_shifts/{shiftId}": {
+      "schema": "GuardShiftLog",
+      "description": "Qorovullik navbatchiligi jurnali"
+    },
+    "/grocery_requests/{requestId}": {
+      "schema": "GroceryRequest",
+      "description": "Oshxona oziq-ovqat talabnomalari"
+    },
+    "/sanitation_tasks/{taskId}": {
+      "schema": "SanitationTask",
+      "description": "Tozalik va dezinfeksiya nazorati"
+    },
+    "/chicken_weights/{recordId}": {
+      "schema": "ChickenWeightRecord",
+      "description": "Tovuqlarni o'lchash natijalari"
+    },
+    "/audit_logs/{logId}": {
+      "schema": "AuditLog",
+      "description": "Tizim audit jurnali"
+    }
+  }
+}

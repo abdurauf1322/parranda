@@ -1,0 +1,6 @@
+{
+  "name": "UYCHI PARRANDA",
+  "description": "Parrandachilik fabrikasi boshqaruv tizimi - Davomat, rolli panellar, texnologik grafiklar, foto-hisobotlar va umumiy muloqot",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

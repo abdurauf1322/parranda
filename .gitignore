@@ -1,0 +1,29 @@
+# Python & Virtual Environments
+venv/
+env/
+__pycache__/
+*.py[cod]
+*.so
+
+# SQLite Databases & Local Storage
+*.db
+*.sqlite3
+instance/
+uploads/
+
+# Environment Variables & Secrets
+.env
+.env.local
+private_key.pem
+
+# Node & Frontend
+frontend/node_modules/
+node_modules/
+# frontend/dist/ (Commented out: Railway da Flask orqali serve qilish uchun build dist saqlanadi)
+# dist/
+
+# IDE & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

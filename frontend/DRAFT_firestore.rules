@@ -1,0 +1,176 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net: Default-deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Path variable guard
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Entity Validation Helpers
+    function isValidUser(data) {
+      return data.id is string && data.id.size() <= 128 &&
+             data.fullName is string && data.fullName.size() <= 200 &&
+             data.role is string && data.role.size() <= 50;
+    }
+
+    function isValidPersonalNote(data) {
+      return data.id is string && data.id.size() <= 128 &&
+             data.userId is string && data.userId.size() <= 128 &&
+             data.title is string && data.title.size() <= 300 &&
+             data.content is string && data.content.size() <= 5000;
+    }
+
+    function isValidAttendance(data) {
+      return data.id is string && data.id.size() <= 128 &&
+             data.userId is string && data.userId.size() <= 128 &&
+             data.userName is string && data.userName.size() <= 200 &&
+             data.role is string && data.role.size() <= 50 &&
+             data.date is string && data.date.size() <= 20 &&
+             data.checkInTime is string && data.checkInTime.size() <= 20 &&
+             data.status in ['keldi', 'kechikdi', 'orinbosar_bilan', 'chiqib_ketdi'];
+    }
+
+    function isValidFarmTask(data) {
+      return data.id is string && data.id.size() <= 128 &&
+             data.title is string && data.title.size() <= 300 &&
+             data.assignedByName is string && data.assignedByName.size() <= 200 &&
+             data.assignedToRole is string && data.assignedToRole.size() <= 50 &&
+             data.status in ['yangi', 'jarayonda', 'bajarildi', 'tasdiqlandi', 'rad_etildi'];
+    }
+
+    function isValidSlesarMilestone(data) {
+      return data.id is string && data.id.size() <= 128 &&
+             data.time is string && data.time.size() <= 20 &&
+             data.alertTime is string && data.alertTime.size() <= 20 &&
+             data.title is string && data.title.size() <= 300 &&
+             data.status in ['kutilmoqda', 'ogohlantirildi', 'bajarildi', 'otkazildi'];
+    }
+
+    function isValidPhotoReport(data) {
+      return data.id is string && data.id.size() <= 128 &&
+             data.uploaderName is string && data.uploaderName.size() <= 200 &&
+             data.title is string && data.title.size() <= 300 &&
+             data.imageUrl is string && data.imageUrl.size() <= 1000 &&
+             data.timestamp is string && data.timestamp.size() <= 64;
+    }
+
+    function isValidChatMessage(data) {
+      return data.id is string && data.id.size() <= 128 &&
+             data.senderName is string && data.senderName.size() <= 200 &&
+             data.message is string && data.message.size() <= 3000 &&
+             data.timestamp is string && data.timestamp.size() <= 64;
+    }
+
+    // 1. Users collection
+    match /users/{userId} {
+      allow read: if isValidId(userId);
+      allow create, update: if isValidId(userId) && isValidUser(incoming());
+      allow delete: if isValidId(userId);
+    }
+
+    // 2. Personal notes (Zametkalar) - creator-isolated
+    match /personal_notes/{noteId} {
+      allow read: if isValidId(noteId);
+      allow create: if isValidId(noteId) && isValidPersonalNote(incoming());
+      allow update: if isValidId(noteId) && isValidPersonalNote(incoming()) && incoming().userId == existing().userId;
+      allow delete: if isValidId(noteId);
+    }
+
+    // 3. Attendance collection
+    match /attendance/{attendanceId} {
+      allow read: if isValidId(attendanceId);
+      allow create, update: if isValidId(attendanceId) && isValidAttendance(incoming());
+      allow delete: if isValidId(attendanceId);
+    }
+
+    // 4. Tasks collection
+    match /tasks/{taskId} {
+      allow read: if isValidId(taskId);
+      allow create, update: if isValidId(taskId) && isValidFarmTask(incoming());
+      allow delete: if isValidId(taskId);
+    }
+
+    // 5. Slesar milestones
+    match /slesar_milestones/{milestoneId} {
+      allow read: if isValidId(milestoneId);
+      allow create, update: if isValidId(milestoneId) && isValidSlesarMilestone(incoming());
+      allow delete: if isValidId(milestoneId);
+    }
+
+    // 6. Photo reports
+    match /photo_reports/{reportId} {
+      allow read: if isValidId(reportId);
+      allow create, update: if isValidId(reportId) && isValidPhotoReport(incoming());
+      allow delete: if isValidId(reportId);
+    }
+
+    // 7. Corporate chat messages
+    match /chat_messages/{messageId} {
+      allow read: if isValidId(messageId);
+      allow create: if isValidId(messageId) && isValidChatMessage(incoming());
+      allow update, delete: if isValidId(messageId);
+    }
+
+    // 8. Factory daily reports
+    match /factory_reports/{reportId} {
+      allow read: if isValidId(reportId);
+      allow write: if isValidId(reportId);
+    }
+
+    // 9. Veterinary diagnoses
+    match /diagnoses/{diagnosisId} {
+      allow read: if isValidId(diagnosisId);
+      allow write: if isValidId(diagnosisId);
+    }
+
+    // 10. Electricity logs
+    match /electricity_logs/{logId} {
+      allow read: if isValidId(logId);
+      allow write: if isValidId(logId);
+    }
+
+    // 11. Egg transport logs
+    match /egg_transports/{transportId} {
+      allow read: if isValidId(transportId);
+      allow write: if isValidId(transportId);
+    }
+
+    // 12. Feed transport logs
+    match /feed_transports/{transportId} {
+      allow read: if isValidId(transportId);
+      allow write: if isValidId(transportId);
+    }
+
+    // 13. Guard shift logs
+    match /guard_shifts/{shiftId} {
+      allow read: if isValidId(shiftId);
+      allow write: if isValidId(shiftId);
+    }
+
+    // 14. Kitchen grocery requests
+    match /grocery_requests/{requestId} {
+      allow read: if isValidId(requestId);
+      allow write: if isValidId(requestId);
+    }
+
+    // 15. Sanitation tasks
+    match /sanitation_tasks/{taskId} {
+      allow read: if isValidId(taskId);
+      allow write: if isValidId(taskId);
+    }
+  }
+}
