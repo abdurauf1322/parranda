@@ -24,7 +24,7 @@ app = Flask(__name__, static_folder=None)
 app.config.from_object(Config)
 
 # Enable CORS for React frontend (production FRONTEND_URL & local dev environments)
-frontend_origin = os.environ.get('FRONTEND_URL')
+frontend_origin = Config.FRONTEND_URL
 allowed_origins = [
     'http://localhost:3000',
     'http://localhost:4173',
@@ -764,5 +764,5 @@ def serve_static_or_spa(path):
 
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=True)
+    port = Config.PORT
+    app.run(host='0.0.0.0', port=port, debug=(Config.FLASK_ENV == 'development'))
