@@ -644,6 +644,7 @@ def swagger_ui():
 # -------------------------------------------------------------
 
 @app.route('/api/push/vapid-public-key', methods=['GET'])
+@app.route('/api/notifications/vapid-public-key', methods=['GET'])
 def get_vapid_public_key():
     return jsonify({
         'publicKey': Config.VAPID_PUBLIC_KEY
@@ -651,6 +652,7 @@ def get_vapid_public_key():
 
 
 @app.route('/api/push/subscribe', methods=['POST'])
+@app.route('/api/notifications/subscribe', methods=['POST'])
 def subscribe_push():
     data = request.get_json() or {}
     endpoint = data.get('endpoint')
@@ -694,14 +696,18 @@ def subscribe_push():
 
 
 @app.route('/api/push/send-test', methods=['POST'])
+@app.route('/api/notifications/test', methods=['POST', 'GET'])
 def send_test_push():
-    data = request.get_json() or {}
+    data = request.get_json() if request.is_json else {}
+    if not data:
+        data = request.args.to_dict()
+
     role = data.get('role')
     title = data.get('title', '🔔 Test Ogohlantirish')
     body = data.get('body', 'Web Push tizimi to\'liq sozlandi va backgroundda ishlamoqda!')
     url = data.get('url', '/')
 
-    count = broadcast_push_notification(
+    res = broadcast_push_notification(
         app,
         payload_dict={
             'title': title,
@@ -711,7 +717,12 @@ def send_test_push():
         },
         role=role
     )
-    return jsonify({'success': True, 'sentCount': count})
+    return jsonify({
+        'success': True,
+        'result': res,
+        'sentCount': res.get('sentCount', 0),
+        'totalSubscribers': res.get('totalSubscribers', 0)
+    })
 
 
 @app.route('/api/health')
@@ -751,8 +762,19 @@ def serve_static_or_spa(path):
     if path.startswith('api/') or path == 'api':
         return jsonify({'error': 'API endpoint topilmadi'}), 404
 
+    # Handle PWA webmanifest specifically if requested as manifest.webmanifest
+    if path == 'manifest.webmanifest' and not os.path.exists(os.path.join(FRONTEND_DIST, path)):
+        if os.path.exists(os.path.join(FRONTEND_DIST, 'manifest.json')):
+            return send_from_directory(FRONTEND_DIST, 'manifest.json', mimetype='application/manifest+json')
+
     target_file = os.path.join(FRONTEND_DIST, path)
     if os.path.exists(target_file) and os.path.isfile(target_file):
+        # Set proper Service-Worker-Allowed and caching headers for sw.js
+        if path == 'sw.js':
+            response = send_from_directory(FRONTEND_DIST, path, mimetype='application/javascript')
+            response.headers['Service-Worker-Allowed'] = '/'
+            response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+            return response
         return send_from_directory(FRONTEND_DIST, path)
 
     # SPA Fallback (React Router refresh support)

@@ -37,8 +37,11 @@ export async function registerWebPushSubscription(user?: { id?: number; username
       return false;
     }
 
-    // 2. Fetch VAPID public key from Flask backend
-    const vapidRes = await fetch(apiUrl('/api/push/vapid-public-key')).catch(() => null);
+    // 2. Fetch VAPID public key from Flask backend (try both standard and push routes)
+    let vapidRes = await fetch(apiUrl('/api/notifications/vapid-public-key')).catch(() => null);
+    if (!vapidRes || !vapidRes.ok) {
+      vapidRes = await fetch(apiUrl('/api/push/vapid-public-key')).catch(() => null);
+    }
     if (!vapidRes || !vapidRes.ok) {
       console.warn('Could not fetch VAPID public key from backend.');
       return false;
