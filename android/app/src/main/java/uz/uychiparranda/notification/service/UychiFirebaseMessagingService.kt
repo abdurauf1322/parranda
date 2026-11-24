@@ -18,10 +18,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
-import uz.uychiparranda.notification.MainActivity
-import uz.uychiparranda.notification.R
 import uz.uychiparranda.notification.UychiApplication
-import java.io.IOException
 
 class UychiFirebaseMessagingService : FirebaseMessagingService() {
 
@@ -31,8 +28,13 @@ class UychiFirebaseMessagingService : FirebaseMessagingService() {
         const val KEY_FCM_TOKEN = "fcm_token"
         const val KEY_USER_ROLE = "user_role"
         const val KEY_USERNAME = "username"
+        const val KEY_PASSWORD = "password"
         const val KEY_BACKEND_URL = "backend_url"
+        const val KEY_IS_LOGGED_IN = "is_logged_in"
         const val DEFAULT_BACKEND_URL = "https://parranda-production.up.railway.app"
+
+        // Dublikat xabarlarning oldini olish uchun oxirgi qayta ishlangan event_id lar ro'yxati
+        private val processedEventIds = LinkedHashSet<String>()
     }
 
     override fun onNewToken(token: String) {
@@ -41,16 +43,38 @@ class UychiFirebaseMessagingService : FirebaseMessagingService() {
         val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         prefs.edit().putString(KEY_FCM_TOKEN, token).apply()
 
-        // Backendga avtomatik sinxronizatsiya
-        val backendUrl = prefs.getString(KEY_BACKEND_URL, DEFAULT_BACKEND_URL) ?: DEFAULT_BACKEND_URL
-        val username = prefs.getString(KEY_USERNAME, null)
-        val role = prefs.getString(KEY_USER_ROLE, null)
-        syncTokenWithBackend(backendUrl, token, username, role)
+        // Faqat login bo'lgan holatda backendga avtomatik sinxronizatsiya qilish
+        if (prefs.getBoolean(KEY_IS_LOGGED_IN, false)) {
+            val backendUrl = prefs.getString(KEY_BACKEND_URL, DEFAULT_BACKEND_URL) ?: DEFAULT_BACKEND_URL
+            val username = prefs.getString(KEY_USERNAME, null)
+            val password = prefs.getString(KEY_PASSWORD, null)
+            val role = prefs.getString(KEY_USER_ROLE, null)
+            if (username != null && password != null) {
+                syncTokenWithBackend(backendUrl, token, username, password, role)
+            }
+        }
     }
 
     override fun onMessageReceived(remoteMessage: RemoteMessage) {
         super.onMessageReceived(remoteMessage)
-        Log.d(TAG, "Xabar qabul qilindi: ${remoteMessage.data}")
+        Log.d(TAG, "FCM Xabar qabul qilindi: ${remoteMessage.data}")
+
+        val eventId = remoteMessage.data["event_id"]
+            ?: remoteMessage.data["tag"]
+            ?: "evt_${remoteMessage.sentTime}"
+
+        // Dublikat xabarni tekshirish: agar ushbu event_id avval ko'rsatilgan bo'lsa, o'tkazib yuborish
+        synchronized(processedEventIds) {
+            if (processedEventIds.contains(eventId)) {
+                Log.d(TAG, "Dublikat event_id aniqlandi ($eventId), xabar qayta ko'rsatilmaydi.")
+                return
+            }
+            if (processedEventIds.size > 100) {
+                val first = processedEventIds.iterator().next()
+                processedEventIds.remove(first)
+            }
+            processedEventIds.add(eventId)
+        }
 
         val title = remoteMessage.notification?.title
             ?: remoteMessage.data["title"]
@@ -58,26 +82,25 @@ class UychiFirebaseMessagingService : FirebaseMessagingService() {
 
         val body = remoteMessage.notification?.body
             ?: remoteMessage.data["body"]
-            ?: "Yangi vazifa yoki xabar mavjud"
+            ?: "Yangi vazifa yoki e'lon mavjud"
 
         val targetUrl = remoteMessage.data["url"] ?: "/"
 
-        showSystemNotification(title, body, targetUrl)
+        showSystemNotification(eventId, title, body, targetUrl)
     }
 
-    private fun showSystemNotification(title: String, body: String, targetUrl: String) {
+    private fun showSystemNotification(eventId: String, title: String, body: String, targetUrl: String) {
         val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val backendUrl = prefs.getString(KEY_BACKEND_URL, DEFAULT_BACKEND_URL) ?: DEFAULT_BACKEND_URL
         val fullUrl = if (targetUrl.startsWith("http")) targetUrl else "$backendUrl$targetUrl"
 
-        // Bildirishnoma bosilganda to'g'ridan-to'g'ri PWA veb-sahifasini yoki ilovani ochish
         val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(fullUrl)).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
 
         val pendingIntent = PendingIntent.getActivity(
             this,
-            System.currentTimeMillis().toInt(),
+            eventId.hashCode(),
             browserIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
@@ -98,17 +121,19 @@ class UychiFirebaseMessagingService : FirebaseMessagingService() {
             .setContentIntent(pendingIntent)
 
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        val notificationId = (System.currentTimeMillis() % 100000).toInt()
-        notificationManager.notify(notificationId, notificationBuilder.build())
+        // Event ID asosida barqaror va yagona notification ID:
+        val stableNotificationId = Math.abs(eventId.hashCode())
+        notificationManager.notify(stableNotificationId, notificationBuilder.build())
     }
 
-    private fun syncTokenWithBackend(backendUrl: String, token: String, username: String?, role: String?) {
+    private fun syncTokenWithBackend(backendUrl: String, token: String, username: String, password: String, role: String?) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val client = OkHttpClient()
                 val json = JSONObject().apply {
                     put("token", token)
-                    put("username", username ?: "android_user")
+                    put("username", username)
+                    put("password", password)
                     put("role", role ?: "xodim")
                     put("deviceName", "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}")
                 }

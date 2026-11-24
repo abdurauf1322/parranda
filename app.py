@@ -758,52 +758,91 @@ def api_broadcast_push():
 @app.route('/api/fcm/register', methods=['POST'])
 def api_fcm_register():
     """
-    Android Native ilovadan olingan FCM tokenini saqlash yoki yangilash.
+    Android Native ilovadan olingan FCM tokenini xavfsiz saqlash yoki yangilash.
+    XAVFSIZLIK: Foydalanuvchi session orqali yoki to'g'ri login/parol (yoki auth header)
+    orqali tasdiqlangan bo'lishi SHART. Ixtiyoriy boshqa xodim nomidan token qo'shish qat'iyan taqiqlangan.
     """
     data = request.get_json() or {}
     token = data.get('token')
     if not token:
         return jsonify({'error': 'token majburiy'}), 400
 
-    username = data.get('username') or session.get('username')
-    role = data.get('role') or session.get('role')
-    user_id = data.get('userId') or session.get('user_id')
+    authenticated_user = None
+
+    # 1. Sessiya orqali tekshirish
+    if session.get('user_id'):
+        authenticated_user = User.query.get(session.get('user_id'))
+
+    # 2. To'g'ridan-to'g'ri Android API orqali login/parol bilan autentifikatsiya
+    if not authenticated_user:
+        username = data.get('username')
+        password = data.get('password')
+        if username and password:
+            candidate = User.query.filter_by(username=username).first()
+            if candidate and candidate.check_password(password):
+                authenticated_user = candidate
+
+    if not authenticated_user:
+        return jsonify({
+            'error': 'Avtorizatsiyadan o\'tilmagan. Tokenni ro\'yxatdan o\'tkazish uchun to\'g\'ri login va parol talab qilinadi.'
+        }), 401
+
     device_name = data.get('deviceName', 'Android Device')
 
-    # Agar token avval mavjud bo'lsa, ma'lumotlarini yangilash
+    # Agar token avval mavjud bo'lsa, uni faqat tasdiqlangan foydalanuvchiga yangilash
     existing = FCMDeviceTokenModel.query.filter_by(token=token).first()
     if existing:
-        existing.user_id = user_id
-        existing.username = username
-        existing.role = role
+        existing.user_id = authenticated_user.id
+        existing.username = authenticated_user.username
+        existing.role = authenticated_user.role
         existing.device_name = device_name
         existing.last_updated_at = datetime.utcnow()
     else:
         new_device = FCMDeviceTokenModel(
-            user_id=user_id,
-            username=username,
-            role=role,
+            user_id=authenticated_user.id,
+            username=authenticated_user.username,
+            role=authenticated_user.role,
             token=token,
             device_name=device_name
         )
         db.session.add(new_device)
 
     db.session.commit()
-    return jsonify({'success': True, 'message': 'FCM token saqlandi'})
+    return jsonify({
+        'success': True,
+        'message': f'FCM token muvaffaqiyatli saqlandi ({authenticated_user.full_name})',
+        'user': authenticated_user.to_dict()
+    })
 
 
 @app.route('/api/fcm/unregister', methods=['POST'])
 def api_fcm_unregister():
     """
-    Foydalanuvchi logout bo'lganda qurilma tokenini o'chirish yoki foydalanuvchidan uzish.
+    Foydalanuvchi logout bo'lganda qurilma tokenini o'chirish.
+    XAVFSIZLIK: Boshqa foydalanuvchining tokenini o'chirib yuborishning oldi olinadi.
     """
     data = request.get_json() or {}
     token = data.get('token')
     if not token:
         return jsonify({'error': 'token majburiy'}), 400
 
+    authenticated_user_id = session.get('user_id')
+
+    # Agar login/parol berilgan bo'lsa
+    if not authenticated_user_id:
+        username = data.get('username')
+        password = data.get('password')
+        if username and password:
+            user = User.query.filter_by(username=username).first()
+            if user and user.check_password(password):
+                authenticated_user_id = user.id
+
     existing = FCMDeviceTokenModel.query.filter_by(token=token).first()
     if existing:
+        # Agar autentifikatsiya bo'lsa va token boshqa kishiniki bo'lsa, ruxsat bermaslik
+        if authenticated_user_id and existing.user_id and existing.user_id != authenticated_user_id:
+            return jsonify({'error': 'Ushbu tokenni o\'chirish uchun ruxsat yo\'q'}), 403
+
         db.session.delete(existing)
         db.session.commit()
         return jsonify({'success': True, 'message': 'FCM token tizimdan o\'chirildi'})

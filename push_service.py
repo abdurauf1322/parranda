@@ -256,90 +256,104 @@ def send_web_push_notification(subscription_info, payload_dict):
         return False, None, detailed_error
 
 
-def broadcast_push_notification(app, payload_dict, role=None, user_id=None):
+import uuid
+
+def broadcast_push_notification(app, payload_dict, role=None, user_id=None, channel='both'):
     """
     Broadcast push notification to subscribers:
-    1. Web Push (Service Worker / PWA brauzerlar)
-    2. Android FCM v1 (Android APK foydalanuvchilari)
-    Deletes obsolete/unregistered subscriptions (404/410 Gone / UNREGISTERED).
-    Returns statistics: {sentCount, failedCount, totalSubscribers, fcmSent, fcmFailed, errors}.
+    - channel: 'both' (default), 'apk' (faqat Android FCM), 'pwa' (faqat Web Push)
+    - Har bir xabarga unique event_id beriladi (dublikat bo'lmasligi uchun).
+    - INVALID_ARGUMENT da token o'chirilmaydi (faqat UNREGISTERED/NOT_FOUND).
     """
-    with app.app_context():
-        # 1. WEB PUSH (PWA)
-        web_query = PushSubscriptionModel.query
-        if user_id:
-            web_query = web_query.filter_by(user_id=user_id)
-        elif role:
-            web_query = web_query.filter((PushSubscriptionModel.role == role) | (PushSubscriptionModel.role == 'direktor'))
+    # 1. Unique Event ID va Tag kafolati
+    if 'event_id' not in payload_dict:
+        payload_dict['event_id'] = f"evt_{int(time.time())}_{uuid.uuid4().hex[:8]}"
 
-        subscriptions = web_query.all()
+    if 'tag' not in payload_dict:
+        payload_dict['tag'] = payload_dict['event_id']
+
+    with app.app_context():
         sent_count = 0
         failed_count = 0
         dead_subs = []
         error_logs = []
 
-        for sub in subscriptions:
-            sub_info = {
-                "endpoint": sub.endpoint,
-                "keys": {
-                    "p256dh": sub.p256dh,
-                    "auth": sub.auth
+        subscriptions = []
+        # 1. WEB PUSH (PWA) - faqat channel != 'apk' bo'lsa
+        if channel in ['both', 'pwa']:
+            web_query = PushSubscriptionModel.query
+            if user_id:
+                web_query = web_query.filter_by(user_id=user_id)
+            elif role:
+                web_query = web_query.filter((PushSubscriptionModel.role == role) | (PushSubscriptionModel.role == 'direktor'))
+
+            subscriptions = web_query.all()
+            for sub in subscriptions:
+                sub_info = {
+                    "endpoint": sub.endpoint,
+                    "keys": {
+                        "p256dh": sub.p256dh,
+                        "auth": sub.auth
+                    }
                 }
-            }
-            success, status, err_details = send_web_push_notification(sub_info, payload_dict)
-            if success:
-                sent_count += 1
-                sub.last_used_at = datetime.utcnow()
-            else:
-                failed_count += 1
-                if err_details:
-                    error_logs.append(err_details)
-                if status in [404, 410]:
-                    dead_subs.append(sub)
+                success, status, err_details = send_web_push_notification(sub_info, payload_dict)
+                if success:
+                    sent_count += 1
+                    sub.last_used_at = datetime.utcnow()
+                else:
+                    failed_count += 1
+                    if err_details:
+                        error_logs.append(err_details)
+                    if status in [404, 410]:
+                        dead_subs.append(sub)
 
-        for dead in dead_subs:
-            db.session.delete(dead)
+            for dead in dead_subs:
+                db.session.delete(dead)
 
-        # 2. ANDROID NATIVE FCM v1
-        fcm_query = FCMDeviceTokenModel.query
-        if user_id:
-            fcm_query = fcm_query.filter_by(user_id=user_id)
-        elif role:
-            fcm_query = fcm_query.filter((FCMDeviceTokenModel.role == role) | (FCMDeviceTokenModel.role == 'direktor'))
-
-        fcm_tokens = fcm_query.all()
+        # 2. ANDROID NATIVE FCM v1 - faqat channel != 'pwa' bo'lsa
+        fcm_tokens = []
         fcm_sent = 0
         fcm_failed = 0
         dead_fcm_tokens = []
 
-        title = payload_dict.get('title', 'Uychi Parranda')
-        body = payload_dict.get('body', '')
+        if channel in ['both', 'apk']:
+            fcm_query = FCMDeviceTokenModel.query
+            if user_id:
+                fcm_query = fcm_query.filter_by(user_id=user_id)
+            elif role:
+                fcm_query = fcm_query.filter((FCMDeviceTokenModel.role == role) | (FCMDeviceTokenModel.role == 'direktor'))
 
-        for dev in fcm_tokens:
-            fcm_ok, fcm_status, fcm_err = send_fcm_v1_notification(
-                device_token=dev.token,
-                title=title,
-                body=body,
-                data_dict=payload_dict
-            )
-            if fcm_ok:
-                fcm_sent += 1
-                dev.last_updated_at = datetime.utcnow()
-            else:
-                fcm_failed += 1
-                if fcm_err:
-                    error_logs.append(f"FCM: {fcm_err}")
-                # Agar token o'chgan bo'lsa (UNREGISTERED / NOT_FOUND / 404)
-                if fcm_status == 404 or (fcm_err and ("UNREGISTERED" in fcm_err or "NOT_FOUND" in fcm_err)):
-                    dead_fcm_tokens.append(dev)
+            fcm_tokens = fcm_query.all()
+            title = payload_dict.get('title', 'Uychi Parranda')
+            body = payload_dict.get('body', '')
 
-        for dead_tok in dead_fcm_tokens:
-            db.session.delete(dead_tok)
+            for dev in fcm_tokens:
+                fcm_ok, fcm_status, fcm_err = send_fcm_v1_notification(
+                    device_token=dev.token,
+                    title=title,
+                    body=body,
+                    data_dict=payload_dict
+                )
+                if fcm_ok:
+                    fcm_sent += 1
+                    dev.last_updated_at = datetime.utcnow()
+                else:
+                    fcm_failed += 1
+                    if fcm_err:
+                        error_logs.append(f"FCM: {fcm_err}")
+                    # FAQAT token haqiqatda ro'yxatdan o'chgan bo'lsa (UNREGISTERED yoki NOT_FOUND) o'chirish.
+                    # INVALID_ARGUMENT (masalan payload formati xatosi) da tokenni aslo o'chirmaslik!
+                    if fcm_status == 404 or (fcm_err and ("UNREGISTERED" in fcm_err or "NOT_FOUND" in fcm_err)):
+                        dead_fcm_tokens.append(dev)
+
+            for dead_tok in dead_fcm_tokens:
+                db.session.delete(dead_tok)
 
         if dead_subs or dead_fcm_tokens or sent_count > 0 or fcm_sent > 0:
             db.session.commit()
 
         return {
+            'event_id': payload_dict['event_id'],
             'sentCount': sent_count + fcm_sent,
             'webSent': sent_count,
             'fcmSent': fcm_sent,

@@ -15,6 +15,12 @@ uploads/
 .env
 .env.local
 private_key.pem
+firebase_service_account.json
+**/firebase_service_account.json
+android/app/google-services.json
+*.keystore
+*.jks
+_backup/
 
 # Node & Frontend
 frontend/node_modules/
