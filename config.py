@@ -27,9 +27,11 @@ class Config:
             raw_db_url = f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
 
     if raw_db_url:
-        # Railway PostgreSQL bazasi taqdim etadigan 'postgres://' prefiksini SQLAlchemy talabiga ko'ra 'postgresql://' ga o'zgartirish
+        # Railway PostgreSQL bazasi prefiksi yoki postgresql:// ni Python 3.13 da psycopg driveri bilan ishlatish uchun moslash
         if raw_db_url.startswith('postgres://'):
-            raw_db_url = raw_db_url.replace('postgres://', 'postgresql://', 1)
+            raw_db_url = raw_db_url.replace('postgres://', 'postgresql+psycopg://', 1)
+        elif raw_db_url.startswith('postgresql://'):
+            raw_db_url = raw_db_url.replace('postgresql://', 'postgresql+psycopg://', 1)
         SQLALCHEMY_DATABASE_URI = raw_db_url
     else:
         # Lokal ishlab chiqish uchun avtomatik SQLite fallback

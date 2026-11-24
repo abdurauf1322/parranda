@@ -8,8 +8,4 @@ pywebpush==2.5.0
 py-vapid==1.9.6
 cryptography>=47.0.0
 gunicorn==22.0.0
-<<<<<<< HEAD
-psycopg2-binary==2.9.10
-=======
-psycopg2-binary==2.9.11
->>>>>>> 47a0bb4a5a8ad908da6e41108a63e2775e56e60b
+psycopg[binary]>=3.2.0
