@@ -127,539 +127,312 @@ export const Header: React.FC<HeaderProps> = ({ onOpenAttendance, onOpenPhotoUpl
 
   const isAccessible = (tab: AppTab) => getAccessibleTabsForRole(currentUser.role).includes(tab);
 
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
+
   return (
     <>
-      <header className="sticky top-0 z-40 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 text-slate-100 shadow-xl">
-        {/* Top Banner & Quick Controls */}
-        <div className="max-w-7xl mx-auto px-2 sm:px-4 py-2 flex flex-wrap items-center justify-between gap-2">
-          {/* Farm Brand Identity */}
-          <div className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 to-yellow-400 flex items-center justify-center shadow-lg shadow-amber-500/20 text-slate-950 font-black shrink-0">
-              <Egg className="w-5 h-5 stroke-[2.5]" />
+      <header className="sticky top-0 z-40 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 text-slate-100 shadow-lg">
+        {/* Top Header Row - Toza 1 Qator */}
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 h-14 flex items-center justify-between gap-3">
+          {/* Chap: Logo va Status nuqtasi */}
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-amber-500 flex items-center justify-center shadow-md shadow-amber-500/20 text-slate-950 font-black shrink-0">
+              <Egg className="w-4 h-4 stroke-[2.5]" />
             </div>
-            <div>
-                <h1 className="text-sm font-black tracking-tight text-white leading-tight">
-                  UYCHI PARRANDA
-                </h1>
-                <p className="text-[10px] text-slate-400 font-medium leading-tight">
-                  Operativ Nazorat
-                </p>
+            <div className="flex items-center gap-2">
+              <h1 className="text-sm sm:text-base font-black tracking-tight text-white leading-tight">
+                UYCHI PARRANDA
+              </h1>
+              {/* Kichik birlashtirilgan status indikatori */}
+              <div 
+                className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-slate-800/80 border border-slate-700/60 text-[11px] font-mono"
+                title={`Vaqt: ${farmCurrentTime} • Sinxron: ${syncStatus === 'online_synced' ? 'Faol' : syncStatus}`}
+              >
+                <span className={`w-2 h-2 rounded-full ${syncStatus === 'online_synced' ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
+                <span className="text-slate-300 hidden sm:inline">{farmCurrentTime}</span>
+              </div>
             </div>
           </div>
 
-          {/* Live Farm Clock & Live Sync Badge & 3-Min Alert Trigger */}
-          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-            {/* Live Clock */}
-            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-800/80 border border-slate-700/60 rounded-lg text-xs font-mono text-amber-400">
-              <Clock className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
-              <span className="font-semibold tracking-wider">{farmCurrentTime}</span>
-            </div>
-
-            {/* Cloud Firestore Online/Offline Sync Badge */}
-            <button
-              type="button"
-              title={
-                syncStatus === 'online_synced'
-                  ? `Server bilan to'liq sinxronlangan (${lastSyncTime || 'Faol'})`
-                  : syncStatus === 'online_syncing'
-                  ? 'Serverga sinxronizatsiya qilinmoqda...'
-                  : "Internet yo'q: Ma'lumotlar lokal xotirada 100% xavfsiz saqlanmoqda, internet yonganda serverga avtomatik uzatiladi"
-              }
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
-                syncStatus === 'online_synced'
-                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/15'
-                  : syncStatus === 'online_syncing'
-                  ? 'bg-sky-500/10 border-sky-500/30 text-sky-400 hover:bg-sky-500/15'
-                  : 'bg-amber-500/10 border-amber-500/30 text-amber-300 hover:bg-amber-500/15'
-              }`}
-              onClick={() => {
-                syncNow();
-                soundSynth.playHarmonicChime();
-              }}
-            >
-              {syncStatus === 'online_synced' && <Cloud className="w-3.5 h-3.5 text-emerald-400 shrink-0" />}
-              {syncStatus === 'online_syncing' && <RefreshCw className="w-3.5 h-3.5 text-sky-400 animate-spin shrink-0" />}
-              {syncStatus === 'offline' && <CloudOff className="w-3.5 h-3.5 text-amber-400 shrink-0" />}
-              <span className="hidden sm:inline">
-                {syncStatus === 'online_synced'
-                  ? 'Onlayn Sinxron'
-                  : syncStatus === 'online_syncing'
-                  ? 'Sinxronlanmoqda'
-                  : 'Oflayn Saqlanmoqda'}
-              </span>
-            </button>
-
-            {/* 3 Daqiqalik Ogohlantirish Tizimi Trigger */}
-            <button
-              onClick={() => setIsQuickAlertOpen(true)}
-              title="3 daqiqalik ogohlantiruvchi signal o'rnatish"
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
-                recurring3MinAlert?.isActive
-                  ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md shadow-amber-500/20'
-                  : 'bg-slate-800 hover:bg-slate-750 border-slate-700 text-slate-300 hover:text-white'
-              }`}
-            >
-              <Bell className="w-3.5 h-3.5 text-amber-400" />
-              <span>3 daqiqa</span>
-            </button>
-
-            {/* Native Browser Notification Permission Button */}
-            <button
-              onClick={handleRequestNotification}
-              title={
-                notifPermission === 'granted'
-                  ? "Brauzer bildirishnomalari faol: Barcha texnologik signallar vaqtida keladi"
-                  : "Bildirishnomalarni yoqish: Signal va eslatmalarni o'tkazib yubormaslik uchun bosing"
-              }
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
-                notifPermission === 'granted'
-                  ? 'bg-slate-800/80 border-slate-700 text-slate-300'
-                  : 'bg-amber-500/15 hover:bg-amber-500/25 border-amber-500/40 text-amber-300'
-              }`}
-            >
-              <Bell className={`w-3.5 h-3.5 ${notifPermission === 'granted' ? 'text-emerald-400' : 'text-amber-400'}`} />
-              <span className="hidden lg:inline">
-                {notifPermission === 'granted' ? 'Signallar faol' : 'Ovozli signalni yoqish'}
-              </span>
-            </button>
-
-            {/* Quick Sound Toggle */}
+          {/* O'ng: Foydalanuvchi Profili Dropdown */}
+          <div className="flex items-center gap-2">
+            {/* Ovoz tugmasi faqat kichik icon */}
             <button
               onClick={toggleSound}
-              title={soundEnabled ? "Ovozli signallar yoqilgan" : "Ovoz o'chirilgan"}
-              className={`p-2 rounded-xl border transition-all cursor-pointer ${
+              title={soundEnabled ? "Ovoz yoqilgan" : "Ovoz o'chirilgan"}
+              className={`p-1.5 rounded-lg border transition-all cursor-pointer ${
                 soundEnabled
                   ? 'bg-slate-800 border-slate-700 text-amber-400 hover:bg-slate-750'
-                  : 'bg-slate-850 border-slate-750 text-slate-500 hover:text-slate-300'
+                  : 'bg-slate-850 border-slate-750 text-slate-500'
               }`}
             >
               {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
             </button>
 
-            {/* Quick Search Button (Ctrl+K) */}
-            <button
-              onClick={() => setIsQuickSearchOpen(true)}
-              title="Tezkor qidiruv (Ctrl + K)"
-              className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-800 hover:bg-slate-750 border border-slate-700 text-slate-300 hover:text-white rounded-xl text-xs font-semibold transition-all cursor-pointer shadow-sm"
-            >
-              <Search className="w-3.5 h-3.5 text-amber-400" />
-              <span className="hidden sm:inline">Qidirish</span>
-              <span className="px-1.5 py-0.2 bg-slate-900 border border-slate-700 text-[10px] text-slate-400 rounded font-mono hidden md:inline">Ctrl+K</span>
-            </button>
-
-            {/* Attendance Check-in Status */}
-            <button
-              onClick={onOpenAttendance}
-              className={`flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
-                hasCheckedInToday
-                  ? currentUserAttendance?.isSubstitution
-                    ? 'bg-purple-500/15 border-purple-500/30 text-purple-300'
-                    : 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300'
-                  : 'bg-amber-500/15 hover:bg-amber-500/25 border-amber-500/40 text-amber-300'
-              }`}
-            >
-              {hasCheckedInToday ? (
-                <>
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>
-                    {currentUserAttendance?.isSubstitution ? "O'rinbosar" : 'Kelgan'}: {currentUserAttendance?.checkInTime.slice(0, 5)}
-                  </span>
-                </>
-              ) : (
-                <>
-                  <AlertCircle className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Davomat belgilash</span>
-                </>
-              )}
-            </button>
-          </div>
-
-          {/* Role Switcher & User Profile */}
-          <div className="flex items-center gap-2">
-            {/* Quick Button to Change Login / Password */}
-            <button
-              onClick={() => {
-                setIsChangePasswordOpen(true);
-                setNewUsernameInput(currentUser.username);
-                setCurrentPasswordInput('');
-                setNewPasswordInput('');
-                setConfirmPasswordInput('');
-                setChangePasswordMsg(null);
-              }}
-              title="Shaxsiy kabinet login va parolini o'zgartirish"
-              className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-amber-500/50 text-amber-400 hover:text-amber-300 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm"
-            >
-              <KeyRound className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Login / Parol</span>
-            </button>
-
-            <PWAInstallButton />
-
-            {/* Direct Source Code Download (.ZIP) */}
-            <a
-              href="/uychi-parranda-source-code.zip"
-              download="uychi-parranda-source-code.zip"
-              title="Barcha kodlarni (.ZIP) yuklab olish"
-              className="flex items-center gap-1.5 px-2.5 py-1.5 bg-emerald-950/70 hover:bg-emerald-900/80 border border-emerald-500/50 text-emerald-300 hover:text-emerald-200 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm"
-            >
-              <Download className="w-3.5 h-3.5 text-emerald-400" />
-              <span className="hidden md:inline">Kodni yuklash (.zip)</span>
-            </a>
-
+            {/* Foydalanuvchi Profili */}
             <div className="relative">
               <button
                 onClick={() => setRoleDropdownOpen(!roleDropdownOpen)}
-                className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-750 border border-slate-700 rounded-xl text-left transition-all cursor-pointer"
+                className="flex items-center gap-2 px-2.5 py-1.5 bg-slate-800/90 hover:bg-slate-800 border border-slate-700 rounded-xl text-left transition-all cursor-pointer"
               >
-                <div className="w-7 h-7 rounded-lg bg-slate-700 flex items-center justify-center text-xs font-bold text-amber-400">
+                <div className="w-6 h-6 rounded-lg bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-xs font-bold text-amber-400">
                   {currentUser.fullName.charAt(0)}
                 </div>
                 <div className="hidden sm:block">
-                  <div className="text-xs font-bold text-slate-200 line-clamp-1">
+                  <div className="text-xs font-bold text-slate-200 line-clamp-1 max-w-[130px]">
                     {currentUser.fullName}
-                  </div>
-                  <div className="text-[10px] text-amber-400/90 font-medium">
-                    {currentRoleInfo?.title || currentUser.role}
                   </div>
                 </div>
                 <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
               </button>
 
-              {/* Modal for Roles & Employees (Ekran markazida ochiladi, ekrandan chiqib ketmaydi) */}
+              {/* Profile Dropdown Modal */}
               {roleDropdownOpen && (
                 <div
-                  className="fixed inset-0 z-50 flex items-start sm:items-center justify-center pt-16 sm:pt-4 p-3 sm:p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-150"
+                  className="fixed inset-0 z-50 flex items-start sm:items-center justify-center pt-14 sm:pt-4 p-3 sm:p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-150"
                   onClick={() => setRoleDropdownOpen(false)}
                 >
                   <div
-                    className="bg-slate-900 border border-slate-700 rounded-3xl shadow-2xl p-4 sm:p-5 max-w-md w-full relative max-h-[82vh] flex flex-col animate-in zoom-in-95 duration-150"
+                    className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl p-4 max-w-sm w-full relative max-h-[85vh] flex flex-col animate-in zoom-in-95 duration-150"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    {/* Header with Title and Close button */}
+                    {/* Header */}
                     <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-800 shrink-0">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center font-bold">
-                          <UserCog className="w-5 h-5" />
-                        </div>
-                        <div>
-                          <h3 className="text-sm font-black text-white">Xodimni Tanlash & Profil</h3>
-                          <p className="text-[11px] text-slate-400">Filiallar va xodimlar kabineti</p>
-                        </div>
+                      <div>
+                        <h3 className="text-sm font-bold text-white">{currentUser.fullName}</h3>
+                        <p className="text-[11px] text-amber-400 font-medium">{currentRoleInfo?.title || currentUser.role}</p>
                       </div>
                       <button
                         onClick={() => setRoleDropdownOpen(false)}
-                        className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-xl transition-colors cursor-pointer"
-                        title="Yopish"
+                        className="p-1 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-lg"
                       >
                         <X className="w-5 h-5" />
                       </button>
                     </div>
 
-                    {/* Personal Security Button */}
-                    <div className="mb-3 shrink-0">
+                    {/* Yashirilgan Tezkor Amallar: Login/Parol, Kodni yuklash, Chiqish */}
+                    <div className="space-y-2 mb-3 shrink-0">
                       <button
-                        type="button"
                         onClick={() => {
-                          setIsChangePasswordOpen(true);
                           setRoleDropdownOpen(false);
-                          setChangePasswordMsg(null);
+                          setIsChangePasswordOpen(true);
                           setNewUsernameInput(currentUser.username);
                           setCurrentPasswordInput('');
                           setNewPasswordInput('');
                           setConfirmPasswordInput('');
+                          setChangePasswordMsg(null);
                         }}
-                        className="w-full flex items-center justify-center gap-2 py-2.5 px-3 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm"
+                        className="w-full flex items-center gap-2.5 px-3 py-2 bg-slate-800/80 hover:bg-slate-800 border border-slate-700/80 text-amber-300 rounded-xl text-xs font-bold transition-all"
                       >
                         <KeyRound className="w-4 h-4 text-amber-400" />
-                        <span>Shaxsiy Login & Parolni O'zgartirish</span>
+                        <span>Login va Parolni O'zgartirish</span>
                       </button>
 
-                      {/* Download Python Developer Package */}
-                      <a
-                        href="/uychi_parranda_python_project.zip"
-                        download="uychi_parranda_python_project.zip"
-                        className="mt-2 w-full flex items-center justify-center gap-2 py-2.5 px-3 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm"
-                      >
-                        <Download className="w-4 h-4 text-amber-400" />
-                        <span>Python Dasturchi Uchun Papka (.ZIP)</span>
-                      </a>
-
-                      {/* Download Full Source Code */}
                       <a
                         href="/uychi-parranda-source-code.zip"
                         download="uychi-parranda-source-code.zip"
-                        className="mt-2 w-full flex items-center justify-center gap-2 py-2 px-3 bg-slate-800 hover:bg-slate-750 text-slate-300 border border-slate-700 rounded-xl text-xs font-medium transition-all cursor-pointer shadow-sm"
+                        className="w-full flex items-center gap-2.5 px-3 py-2 bg-slate-800/80 hover:bg-slate-800 border border-slate-700/80 text-emerald-300 rounded-xl text-xs font-bold transition-all"
                       >
-                        <Download className="w-4 h-4 text-slate-400" />
-                        <span>Frontend React Kodlari (.ZIP)</span>
+                        <Download className="w-4 h-4 text-emerald-400" />
+                        <span>Kodni yuklash (.zip)</span>
                       </a>
+
+                      <button
+                        onClick={() => {
+                          setRoleDropdownOpen(false);
+                          logout();
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 rounded-xl text-xs font-bold transition-all"
+                      >
+                        <LogOut className="w-4 h-4 text-rose-400" />
+                        <span>Tizimdan Chiqish</span>
+                      </button>
                     </div>
 
-                    <div className="px-1 py-1 flex items-center justify-between mb-2 shrink-0">
-                      <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
-                        <Lock className="w-3 h-3 text-amber-400" />
-                        <span>Xodimni tanlash (Parolli kirish):</span>
-                      </span>
-                      <span className="text-[10px] text-amber-400 font-bold bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20">
-                        5 ta filial
-                      </span>
+                    {/* Xodimni almashtirish ro'yxati */}
+                    <div className="text-[11px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider">
+                      Boshqa xodimga o'tish
                     </div>
-
-                    {/* Scrollable employee list */}
-                    <div className="space-y-1.5 overflow-y-auto flex-1 pr-1">
+                    <div className="overflow-y-auto space-y-1 pr-1 max-h-48 scrollbar-thin">
                       {users.map((u) => {
-                        const roleConfig = ROLE_LABELS[u.role];
                         const isCurrent = u.id === currentUser.id;
                         return (
                           <button
                             key={u.id}
                             onClick={() => {
-                              if (isCurrent) {
-                                setRoleDropdownOpen(false);
-                                return;
-                              }
                               setTargetUserToSwitch(u);
                               setSwitchPasswordInput('');
                               setSwitchError(null);
-                              setRoleDropdownOpen(false);
                             }}
-                            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left text-xs transition-all cursor-pointer ${
+                            className={`w-full flex items-center justify-between p-2 rounded-xl text-xs text-left transition-all ${
                               isCurrent
-                                ? 'bg-amber-500/20 text-amber-300 font-semibold border border-amber-500/30'
-                                : 'hover:bg-slate-800 bg-slate-800/40 text-slate-300 border border-slate-750'
+                                ? 'bg-amber-500/20 border border-amber-500/40 text-amber-300 font-bold'
+                                : 'bg-slate-800/50 hover:bg-slate-800 text-slate-300 border border-transparent'
                             }`}
                           >
-                            <div className="flex-1 min-w-0 pr-2">
-                              <div className="flex items-center gap-1.5">
-                                <span className="font-bold text-slate-100 truncate">{u.fullName}</span>
-                                {isCurrent && (
-                                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
-                                )}
-                              </div>
-                              <div className="flex items-center gap-2 mt-0.5 text-[11px]">
-                                <span className="text-amber-400 font-medium">{roleConfig?.short || u.role}</span>
-                                <span className="text-slate-400 truncate">• {u.branchName || 'Bosh Filial'}</span>
-                              </div>
+                            <div>
+                              <div className="font-semibold text-white">{u.fullName}</div>
+                              <div className="text-[10px] text-slate-400">{ROLE_LABELS[u.role]?.title || u.role}</div>
                             </div>
-                            <span className={`text-[10px] px-2 py-1 rounded-lg shrink-0 border flex items-center gap-1 ${
-                              isCurrent
-                                ? 'bg-amber-500 text-slate-950 border-amber-400 font-bold shadow-sm'
-                                : 'bg-slate-800 text-slate-300 border-slate-700'
-                            }`}>
-                              <Lock className="w-2.5 h-2.5" />
-                              {isCurrent ? 'Faol' : 'Kirish'}
-                            </span>
+                            {isCurrent && <CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0" />}
                           </button>
                         );
                       })}
-                    </div>
-
-                    {/* Bottom Close action button */}
-                    <div className="pt-3 mt-3 border-t border-slate-800 flex justify-end shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => setRoleDropdownOpen(false)}
-                        className="px-4 py-2 bg-slate-800 hover:bg-slate-750 text-slate-300 font-bold rounded-xl text-xs cursor-pointer transition-colors"
-                      >
-                        Yopish
-                      </button>
                     </div>
                   </div>
                 </div>
               )}
             </div>
-
-            <button
-              onClick={logout}
-              title="Tizimdan chiqish (Logout)"
-              className="p-2 bg-slate-800 hover:bg-rose-950/40 text-slate-400 hover:text-rose-400 border border-slate-700 rounded-xl transition-all cursor-pointer"
-            >
-              <LogOut className="w-4 h-4" />
-            </button>
           </div>
         </div>
 
-        {/* Desktop Navigation Tabs (Hidden on mobile where BottomNavBar takes over) */}
-        <nav className="hidden md:flex max-w-7xl mx-auto px-2 sm:px-4 items-center gap-1 overflow-x-auto border-t border-slate-800/80 py-1.5 scrollbar-none text-xs">
-          {/* 1. Foydalanuvchining o'z lavozimiga oid Boshqaruv Paneli */}
+        {/* Ixcham Navigatsiya Satri (Asosiy 4-5 ta bo'lim + "Ko'proq ▾") */}
+        <nav className="hidden md:flex max-w-7xl mx-auto px-3 sm:px-6 items-center gap-1.5 border-t border-slate-800/80 py-1.5 text-xs">
+          {/* 1. Asosiy Dashboard */}
           <button
             onClick={() => setActiveTab('dashboard')}
-            className={`flex items-center gap-1 px-2 py-1.5 rounded-lg font-bold whitespace-nowrap transition-all ${
+            className={`px-3 py-1.5 rounded-lg font-bold transition-all ${
               activeTab === 'dashboard'
                 ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                : 'text-slate-300 hover:text-white hover:bg-slate-800'
             }`}
           >
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
-            <span>{currentRoleInfo?.short ? `${currentRoleInfo.short}` : 'Paneli'}</span>
+            {currentRoleInfo?.short || 'Boshqaruv'}
           </button>
 
-          {/* 2. Kundalik Operativ Reja */}
+          {/* 2. Reja */}
           {isAccessible('operational_plan') && (
             <button
               onClick={() => setActiveTab('operational_plan')}
-              className={`flex items-center gap-1 px-2 py-1.5 rounded-lg font-bold whitespace-nowrap transition-all ${
+              className={`px-3 py-1.5 rounded-lg font-bold transition-all ${
                 activeTab === 'operational_plan'
                   ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
-                  : 'text-amber-400/90 hover:text-amber-300 hover:bg-slate-800'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-800'
               }`}
             >
-              <ClipboardList className="w-3.5 h-3.5 text-amber-400" />
-              <span>Reja</span>
+              Reja
             </button>
           )}
 
-          {/* Inventarizatsiya */}
-          {isAccessible('inventory') && (
-            <button
-              onClick={() => setActiveTab('inventory')}
-              className={`flex items-center gap-1 px-2 py-1.5 rounded-lg font-bold whitespace-nowrap transition-all ${
-                activeTab === 'inventory'
-                  ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
-                  : 'text-emerald-400 hover:text-emerald-300 hover:bg-slate-800'
-              }`}
-            >
-              <Boxes className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Inv</span>
-            </button>
-          )}
-
-          {/* Parrandalar vazni */}
-          {isAccessible('chicken_weight') && (
-            <button
-              onClick={() => setActiveTab('chicken_weight')}
-              className={`flex items-center gap-1 px-2 py-1.5 rounded-lg font-bold whitespace-nowrap transition-all ${
-                activeTab === 'chicken_weight'
-                  ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
-                  : 'text-amber-300 hover:text-amber-200 hover:bg-slate-800'
-              }`}
-            >
-              <Egg className="w-3.5 h-3.5 text-amber-300" />
-              <span>Vazn</span>
-            </button>
-          )}
-
-          {/* 2. Filiallar Analitikasi */}
-          {isAccessible('branch_analytics') && (
-            <button
-              onClick={() => setActiveTab('branch_analytics')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold whitespace-nowrap transition-all ${
-                activeTab === 'branch_analytics'
-                  ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
-                  : 'text-amber-400/90 hover:text-amber-300 hover:bg-slate-800'
-              }`}
-            >
-              <Building2 className="w-3.5 h-3.5" />
-              <span>Filiallar Analitikasi</span>
-              <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30">
-                5 ta
-              </span>
-            </button>
-          )}
-
-          {/* 3. Kadrlar (HR) bo'limi */}
-          {isAccessible('hr') && (
-            <button
-              onClick={() => setActiveTab('hr')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold whitespace-nowrap transition-all ${
-                activeTab === 'hr'
-                  ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20'
-                  : 'text-cyan-400 hover:text-cyan-200 hover:bg-slate-800'
-              }`}
-            >
-              <UserCog className="w-3.5 h-3.5" />
-              <span>Kadrlar (HR)</span>
-            </button>
-          )}
-
-          {/* 4. UMUMIY BO'LIMLAR (Barcha lavozimlar uchun ochiq) */}
-          {isAccessible('chat') && (
-            <button
-              onClick={() => setActiveTab('chat')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold whitespace-nowrap transition-all ${
-                activeTab === 'chat'
-                  ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
-              }`}
-            >
-              <MessageSquare className="w-3.5 h-3.5" />
-              <span>Umumiy Chat</span>
-            </button>
-          )}
-
+          {/* 3. Topshiriqlar */}
           {isAccessible('tasks') && (
             <button
               onClick={() => setActiveTab('tasks')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold whitespace-nowrap transition-all ${
+              className={`px-3 py-1.5 rounded-lg font-bold transition-all ${
                 activeTab === 'tasks'
                   ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-800'
               }`}
             >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Topshiriqlar</span>
+              Topshiriqlar
             </button>
           )}
 
-          {isAccessible('attendance') && (
+          {/* 4. Ombor & Vazn */}
+          {(isAccessible('inventory') || isAccessible('chicken_weight')) && (
             <button
-              onClick={() => setActiveTab('attendance')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold whitespace-nowrap transition-all ${
-                activeTab === 'attendance'
+              onClick={() => setActiveTab(isAccessible('inventory') ? 'inventory' : 'chicken_weight')}
+              className={`px-3 py-1.5 rounded-lg font-bold transition-all ${
+                activeTab === 'inventory' || activeTab === 'chicken_weight'
                   ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-800'
               }`}
             >
-              <UserCheck className="w-3.5 h-3.5" />
-              <span>Davomat Jurnali</span>
+              Ombor & Vazn
             </button>
           )}
 
-          {isAccessible('photos') && (
+          {/* 5. Umumiy Chat */}
+          {isAccessible('chat') && (
             <button
-              onClick={() => setActiveTab('photos')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold whitespace-nowrap transition-all ${
-                activeTab === 'photos'
+              onClick={() => setActiveTab('chat')}
+              className={`px-3 py-1.5 rounded-lg font-bold transition-all ${
+                activeTab === 'chat'
                   ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-800'
               }`}
             >
-              <Camera className="w-3.5 h-3.5" />
-              <span>Foto-Hisobotlar</span>
+              Chat
             </button>
           )}
 
-          {isAccessible('notes') && (
+          {/* "Ko'proq ▾" Dropdown (Davomat, Foto-Hisobot, Zametkalar va h.k.) */}
+          <div className="relative ml-auto">
             <button
-              onClick={() => setActiveTab('notes')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold whitespace-nowrap transition-all ${
-                activeTab === 'notes'
-                  ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+              onClick={() => setMoreMenuOpen(!moreMenuOpen)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold text-xs transition-all cursor-pointer ${
+                ['attendance', 'photos', 'notes', 'branch_analytics', 'hr'].includes(activeTab)
+                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
               }`}
             >
-              <StickyNote className="w-3.5 h-3.5" />
-              <span>Shaxsiy Zametkalar</span>
-              {currentUserNotes.length > 0 && (
-                <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
-                  activeTab === 'notes' ? 'bg-slate-950 text-amber-400' : 'bg-amber-500/20 text-amber-300'
-                }`}>
-                  {currentUserNotes.length}
-                </span>
-              )}
+              <span>Ko'proq</span>
+              <ChevronDown className="w-3.5 h-3.5" />
             </button>
-          )}
 
-
-
-          {/* Quick Photo Upload Trigger */}
-          <button
-            onClick={onOpenPhotoUpload}
-            className="ml-auto hidden sm:flex items-center gap-1.5 px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg text-xs font-semibold border border-slate-700 transition-all"
-          >
-            <Camera className="w-3.5 h-3.5 text-amber-400" />
-            <span>Rasm Yuklash</span>
-          </button>
+            {moreMenuOpen && (
+              <div 
+                className="absolute right-0 mt-2 w-48 bg-slate-900 border border-slate-700 rounded-xl shadow-xl p-1.5 z-50 space-y-1 animate-in fade-in zoom-in-95 duration-100"
+                onClick={() => setMoreMenuOpen(false)}
+              >
+                {isAccessible('attendance') && (
+                  <button
+                    onClick={() => setActiveTab('attendance')}
+                    className={`w-full flex items-center gap-2 p-2 rounded-lg text-xs font-semibold text-left ${
+                      activeTab === 'attendance' ? 'bg-amber-500 text-slate-950' : 'text-slate-300 hover:bg-slate-800'
+                    }`}
+                  >
+                    <UserCheck className="w-4 h-4" />
+                    <span>Davomat Jurnali</span>
+                  </button>
+                )}
+                {isAccessible('photos') && (
+                  <button
+                    onClick={() => setActiveTab('photos')}
+                    className={`w-full flex items-center gap-2 p-2 rounded-lg text-xs font-semibold text-left ${
+                      activeTab === 'photos' ? 'bg-amber-500 text-slate-950' : 'text-slate-300 hover:bg-slate-800'
+                    }`}
+                  >
+                    <Camera className="w-4 h-4" />
+                    <span>Foto-Hisobotlar</span>
+                  </button>
+                )}
+                {isAccessible('notes') && (
+                  <button
+                    onClick={() => setActiveTab('notes')}
+                    className={`w-full flex items-center gap-2 p-2 rounded-lg text-xs font-semibold text-left ${
+                      activeTab === 'notes' ? 'bg-amber-500 text-slate-950' : 'text-slate-300 hover:bg-slate-800'
+                    }`}
+                  >
+                    <StickyNote className="w-4 h-4" />
+                    <span>Shaxsiy Zametkalar</span>
+                  </button>
+                )}
+                {isAccessible('branch_analytics') && (
+                  <button
+                    onClick={() => setActiveTab('branch_analytics')}
+                    className={`w-full flex items-center gap-2 p-2 rounded-lg text-xs font-semibold text-left ${
+                      activeTab === 'branch_analytics' ? 'bg-amber-500 text-slate-950' : 'text-slate-300 hover:bg-slate-800'
+                    }`}
+                  >
+                    <Building2 className="w-4 h-4" />
+                    <span>Filiallar Analitikasi</span>
+                  </button>
+                )}
+                {isAccessible('hr') && (
+                  <button
+                    onClick={() => setActiveTab('hr')}
+                    className={`w-full flex items-center gap-2 p-2 rounded-lg text-xs font-semibold text-left ${
+                      activeTab === 'hr' ? 'bg-amber-500 text-slate-950' : 'text-slate-300 hover:bg-slate-800'
+                    }`}
+                  >
+                    <UserCog className="w-4 h-4" />
+                    <span>Kadrlar (HR)</span>
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
         </nav>
       </header>
 

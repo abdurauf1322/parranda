@@ -107,159 +107,114 @@ export const SlesarDashboard: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header Banner */}
-      <div className="bg-gradient-to-r from-orange-950/60 via-slate-900 to-amber-950/40 p-6 rounded-3xl border border-orange-500/30 shadow-2xl flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-orange-500/20 border border-orange-500/40 flex items-center justify-center text-orange-400">
-            <Wrench className="w-7 h-7" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl sm:text-2xl font-black text-white">
-                Slesar va Yem Taqsimlovchi Paneli
-              </h1>
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-orange-500/20 text-orange-300 border border-orange-500/30">
-                Moslashuvchan Texnologik Grafik
-              </span>
-            </div>
-            <p className="text-xs sm:text-sm text-slate-400 mt-0.5">
-              Amallar vaqtini o'zgartirish, avtomatik 3 daqiqalik ogohlantirish va jarayonlar nazorati
-            </p>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            onClick={() => setIsAddModalOpen(true)}
-            className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-orange-300 border border-orange-500/40 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
-          >
-            <Plus className="w-4 h-4 text-orange-400" />
-            <span>Bosqich Qo'shish</span>
-          </button>
-
-          <button
-            onClick={() => triggerTestAlert()}
-            className="px-4 py-2 bg-orange-500 hover:bg-orange-400 text-slate-950 font-bold rounded-xl text-xs flex items-center gap-2 shadow-lg shadow-orange-500/20 transition-all cursor-pointer"
-          >
-            <Bell className="w-4 h-4 animate-bounce" />
-            <span>Signalni Sinash</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Slesar Bildirishnomalar va Ogohlantirishlar Holati Banneri */}
-      {notifPermission !== 'granted' ? (
-        <div className="p-4 sm:p-5 bg-gradient-to-r from-orange-950/80 via-amber-950/70 to-slate-900 border-2 border-orange-500/60 rounded-3xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-2xl animate-pulse">
-          <div className="flex items-start gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-orange-500 text-slate-950 flex items-center justify-center font-black shrink-0 shadow-lg shadow-orange-500/40">
-              <Bell className="w-6 h-6 animate-bounce" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] font-black uppercase tracking-wider text-orange-400 bg-orange-500/20 px-2 py-0.5 rounded border border-orange-500/40">
-                  MUHIM: Bildirishnomalar Yoqilmagan
-                </span>
-              </div>
-              <h3 className="text-base font-black text-white mt-1">
-                Slesar Texnologik Signallarini O'tkazib Yubormang!
-              </h3>
-              <p className="text-xs text-orange-200/90 mt-0.5 max-w-2xl leading-relaxed">
-                Telefoningiz qulflangan holatda ham 10 ta texnologik bosqich va har 3 daqiqalik shoshilinch signallar kelishi uchun bildirishnomalarga ruxsat bering.
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <button
-              onClick={handleRequestNotification}
-              className="px-5 py-3 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-slate-950 font-black rounded-2xl text-xs flex items-center gap-2 shadow-xl shadow-orange-500/30 cursor-pointer transition-all transform hover:scale-[1.02]"
-            >
-              <Bell className="w-4 h-4" />
-              <span>Bildirishnomalarni Yoqish</span>
-            </button>
-          </div>
-        </div>
-      ) : (
-        <div className="px-4 py-3 bg-emerald-950/40 border border-emerald-500/30 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
-          <div className="flex items-center gap-2 text-emerald-300">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-            <span className="font-semibold">
-              Tizim bildirishnomalari faol: Barcha 10 ta bosqich 3 daqiqa oldin ovoz, vibratsiya va telefon ekrani orqali eslatiladi.
+    <div className="space-y-4">
+      {/* 1. Bildirishnoma ruxsati faqat yoqilmagan bo'lsagina ko'rsatiladigan ixcham 1 qatorli ogohlantirish */}
+      {notifPermission !== 'granted' && (
+        <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2.5 text-amber-300">
+            <Bell className="w-4 h-4 text-amber-400 shrink-0 animate-bounce" />
+            <span>
+              <strong>Bildirishnomalar yoqilmagan:</strong> Texnologik signallarni telefon yopiq paytida ham eshitish uchun ruxsat bering.
             </span>
           </div>
           <button
-            onClick={() => triggerTestAlert()}
-            className="text-[11px] font-bold text-amber-300 hover:text-white px-2.5 py-1 bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700 transition-colors shrink-0 self-start sm:self-auto cursor-pointer"
+            onClick={handleRequestNotification}
+            className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl text-xs shrink-0 self-start sm:self-auto cursor-pointer transition-colors"
           >
-            Signalni qayta tekshirish
+            Ruxsat berish
           </button>
         </div>
       )}
 
-      {/* Next Upcoming Milestone Alert Callout */}
-      {nextMilestone && (
-        <div className="p-4 bg-gradient-to-r from-orange-900/30 to-amber-900/30 border-2 border-orange-500/40 rounded-3xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xl">
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-orange-500 text-slate-950 flex items-center justify-center font-black shrink-0">
-              <Clock className="w-6 h-6" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] font-black uppercase tracking-wider text-orange-400">
-                  Navbatdagi Texnologik Bosqich:
-                </span>
-                <span className="font-mono text-xs px-2 py-0.5 bg-orange-500/20 text-orange-300 rounded font-bold border border-orange-500/30">
-                  Ogohlantirish: {nextMilestone.alertTime} (-3 daqiqa)
-                </span>
+      {/* 2. Eng Muhim Karta: "NAVBATDAGI TEXNOLOGIK BOSQICH" (Markazda, Katta va Aniq) */}
+      {nextMilestone ? (
+        <div className="p-5 sm:p-6 bg-slate-900 border border-amber-500/30 rounded-3xl shadow-xl space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-400 flex items-center justify-center font-black shrink-0">
+                <Clock className="w-6 h-6 text-amber-400" />
               </div>
-              <h2 className="text-base font-black text-white mt-0.5">
-                {nextMilestone.time} — {nextMilestone.title}
-              </h2>
-              <p className="text-xs text-slate-300 mt-1">{nextMilestone.description}</p>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-amber-400">
+                    Navbatdagi Texnologik Bosqich
+                  </span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-slate-300">
+                    Signal: {nextMilestone.alertTime} (-3 daqiqa)
+                  </span>
+                </div>
+                <h2 className="text-xl sm:text-2xl font-black text-white mt-1">
+                  {nextMilestone.time} — {nextMilestone.title}
+                </h2>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={() => startEdit(nextMilestone)}
+                className="px-3 py-2.5 bg-slate-800 hover:bg-slate-750 text-slate-300 rounded-xl text-xs font-semibold border border-slate-700 flex items-center gap-1.5 cursor-pointer transition-colors"
+              >
+                <Edit2 className="w-3.5 h-3.5" />
+                <span>O'zgartirish</span>
+              </button>
+
+              <button
+                onClick={() => handleComplete(nextMilestone.id)}
+                className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-black flex items-center gap-2 shadow-lg shadow-emerald-600/30 cursor-pointer transition-all transform hover:scale-[1.02]"
+              >
+                <CheckCircle2 className="w-5 h-5" />
+                <span>Bajarildi</span>
+              </button>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
-            <button
-              onClick={() => startEdit(nextMilestone)}
-              className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-orange-300 rounded-xl text-xs font-semibold border border-slate-700 flex items-center gap-1.5 cursor-pointer"
-            >
-              <Edit2 className="w-3.5 h-3.5" />
-              <span>Vaqtini o'zgartirish</span>
-            </button>
-
-            <button
-              onClick={() => handleComplete(nextMilestone.id)}
-              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-emerald-600/30 cursor-pointer"
-            >
-              <CheckCircle2 className="w-4 h-4" />
-              <span>Bajarildi</span>
-            </button>
-          </div>
+          <p className="text-sm text-slate-300 leading-relaxed">
+            {nextMilestone.description}
+          </p>
+        </div>
+      ) : (
+        <div className="p-5 bg-slate-900 border border-slate-800 rounded-3xl text-center">
+          <CheckCircle2 className="w-8 h-8 text-emerald-400 mx-auto mb-2" />
+          <h3 className="text-base font-bold text-white">Bugungi barcha texnologik bosqichlar bajarildi!</h3>
+          <p className="text-xs text-slate-400 mt-1">Yangi topshiriqlar bo'lsa ro'yxatdan kuzatishingiz mumkin.</p>
         </div>
       )}
 
       {/* Complete Milestones Schedule Timeline */}
-      <div className="bg-slate-850 border border-slate-800 rounded-3xl p-5 shadow-xl space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+      <div className="bg-slate-900 border border-slate-800 rounded-3xl p-4 sm:p-5 shadow-xl space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-800/80">
           <h2 className="text-sm font-bold uppercase tracking-wider text-slate-200 flex items-center gap-2">
-            <Clock className="w-4 h-4 text-orange-400" />
+            <Clock className="w-4 h-4 text-amber-400" />
             <span>Texnologik Ish Grafigi ({slesarMilestones.length} ta bosqich)</span>
           </h2>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={() => setIsAddModalOpen(true)}
+              className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Bosqich Qo'shish</span>
+            </button>
+            <button
+              onClick={() => triggerTestAlert()}
+              className="px-3 py-1.5 bg-slate-800 hover:bg-slate-750 text-slate-300 font-semibold rounded-xl text-xs flex items-center gap-1.5 border border-slate-700 transition-colors cursor-pointer"
+            >
+              <Bell className="w-3.5 h-3.5 text-amber-400" />
+              <span>Signalni Sinash</span>
+            </button>
             <button
               onClick={() => {
                 if (confirm("Haqiqatan ham barcha vaqtlarni zavod standart (07:00-17:00) holatiga qaytarmoqchimisiz?")) {
                   resetMilestonesToDefault();
                 }
               }}
-              className="text-[11px] text-slate-400 hover:text-white flex items-center gap-1 px-2.5 py-1 bg-slate-800 rounded-lg border border-slate-700 transition-colors"
+              className="text-[11px] text-slate-400 hover:text-white flex items-center gap-1 px-2.5 py-1.5 bg-slate-800 hover:bg-slate-750 rounded-xl border border-slate-700 transition-colors"
             >
               <RotateCcw className="w-3 h-3" />
-              <span>Standart grafikga qaytarish</span>
+              <span>Standart</span>
             </button>
-            <span className="text-xs text-amber-400 font-mono font-bold">
-              Vaqt: {farmCurrentTime}
+            <span className="text-xs text-amber-400 font-mono font-bold ml-1">
+              {farmCurrentTime}
             </span>
           </div>
         </div>
