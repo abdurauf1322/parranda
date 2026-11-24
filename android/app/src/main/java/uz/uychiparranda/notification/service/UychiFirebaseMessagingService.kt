@@ -19,12 +19,12 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import uz.uychiparranda.notification.UychiApplication
+import uz.uychiparranda.notification.security.SecurityHelper
 
 class UychiFirebaseMessagingService : FirebaseMessagingService() {
 
     companion object {
         private const val TAG = "UychiFCMService"
-        const val PREFS_NAME = "uychi_fcm_prefs"
         const val KEY_FCM_TOKEN = "fcm_token"
         const val KEY_USER_ROLE = "user_role"
         const val KEY_USERNAME = "username"
@@ -32,23 +32,20 @@ class UychiFirebaseMessagingService : FirebaseMessagingService() {
         const val KEY_BACKEND_URL = "backend_url"
         const val KEY_IS_LOGGED_IN = "is_logged_in"
         const val DEFAULT_BACKEND_URL = "https://parranda-production.up.railway.app"
-
-        // Dublikat xabarlarning oldini olish uchun oxirgi qayta ishlangan event_id lar ro'yxati
-        private val processedEventIds = LinkedHashSet<String>()
     }
 
     override fun onNewToken(token: String) {
         super.onNewToken(token)
-        Log.d(TAG, "Yangi FCM token olindi: $token")
-        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        prefs.edit().putString(KEY_FCM_TOKEN, token).apply()
+        Log.d(TAG, "Yangi FCM token olindi.") // Token va parollar logga chiqarilmaydi!
+        val securePrefs = SecurityHelper.getSecurePreferences(this)
+        securePrefs.edit().putString(KEY_FCM_TOKEN, token).apply()
 
-        // Faqat login bo'lgan holatda backendga avtomatik sinxronizatsiya qilish
-        if (prefs.getBoolean(KEY_IS_LOGGED_IN, false)) {
-            val backendUrl = prefs.getString(KEY_BACKEND_URL, DEFAULT_BACKEND_URL) ?: DEFAULT_BACKEND_URL
-            val username = prefs.getString(KEY_USERNAME, null)
-            val password = prefs.getString(KEY_PASSWORD, null)
-            val role = prefs.getString(KEY_USER_ROLE, null)
+        // Faqat login holatida fon tokenini yangilash
+        if (securePrefs.getBoolean(KEY_IS_LOGGED_IN, false)) {
+            val backendUrl = securePrefs.getString(KEY_BACKEND_URL, DEFAULT_BACKEND_URL) ?: DEFAULT_BACKEND_URL
+            val username = securePrefs.getString(KEY_USERNAME, null)
+            val password = securePrefs.getString(KEY_PASSWORD, null)
+            val role = securePrefs.getString(KEY_USER_ROLE, null)
             if (username != null && password != null) {
                 syncTokenWithBackend(backendUrl, token, username, password, role)
             }
@@ -57,23 +54,16 @@ class UychiFirebaseMessagingService : FirebaseMessagingService() {
 
     override fun onMessageReceived(remoteMessage: RemoteMessage) {
         super.onMessageReceived(remoteMessage)
-        Log.d(TAG, "FCM Xabar qabul qilindi: ${remoteMessage.data}")
+        Log.d(TAG, "FCM Xabar qabul qilindi.")
 
         val eventId = remoteMessage.data["event_id"]
             ?: remoteMessage.data["tag"]
             ?: "evt_${remoteMessage.sentTime}"
 
-        // Dublikat xabarni tekshirish: agar ushbu event_id avval ko'rsatilgan bo'lsa, o'tkazib yuborish
-        synchronized(processedEventIds) {
-            if (processedEventIds.contains(eventId)) {
-                Log.d(TAG, "Dublikat event_id aniqlandi ($eventId), xabar qayta ko'rsatilmaydi.")
-                return
-            }
-            if (processedEventIds.size > 100) {
-                val first = processedEventIds.iterator().next()
-                processedEventIds.remove(first)
-            }
-            processedEventIds.add(eventId)
+        // PERSISTENT STORAGE orqali tekshirish (ilova qayta ishga tushganda yoki telefon o'chib yonganda ham saqlanadi)
+        if (SecurityHelper.isEventAlreadyProcessed(this, eventId)) {
+            Log.d(TAG, "Dublikat event_id aniqlandi ($eventId), xabar qayta ko'rsatilmaydi.")
+            return
         }
 
         val title = remoteMessage.notification?.title
@@ -90,8 +80,8 @@ class UychiFirebaseMessagingService : FirebaseMessagingService() {
     }
 
     private fun showSystemNotification(eventId: String, title: String, body: String, targetUrl: String) {
-        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val backendUrl = prefs.getString(KEY_BACKEND_URL, DEFAULT_BACKEND_URL) ?: DEFAULT_BACKEND_URL
+        val securePrefs = SecurityHelper.getSecurePreferences(this)
+        val backendUrl = securePrefs.getString(KEY_BACKEND_URL, DEFAULT_BACKEND_URL) ?: DEFAULT_BACKEND_URL
         val fullUrl = if (targetUrl.startsWith("http")) targetUrl else "$backendUrl$targetUrl"
 
         val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(fullUrl)).apply {
@@ -121,7 +111,6 @@ class UychiFirebaseMessagingService : FirebaseMessagingService() {
             .setContentIntent(pendingIntent)
 
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        // Event ID asosida barqaror va yagona notification ID:
         val stableNotificationId = Math.abs(eventId.hashCode())
         notificationManager.notify(stableNotificationId, notificationBuilder.build())
     }
@@ -146,10 +135,17 @@ class UychiFirebaseMessagingService : FirebaseMessagingService() {
                     .build()
 
                 client.newCall(request).execute().use { response ->
-                    Log.d(TAG, "Backend token sync: code=${response.code}")
+                    if (response.code == 401 || response.code == 403) {
+                        // Sessiya yoki parol o'zgargan bo'lsa, xavfsiz holda login holatini soxtalashtirmaslik
+                        val securePrefs = SecurityHelper.getSecurePreferences(this@UychiFirebaseMessagingService)
+                        securePrefs.edit().putBoolean(KEY_IS_LOGGED_IN, false).apply()
+                        Log.w(TAG, "Autentifikatsiya muddati tugagan yoki xato. Qayta login talab qilinadi.")
+                    } else {
+                        Log.d(TAG, "Backend token sync: code=${response.code}")
+                    }
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Backend token sync xatosi: ${e.message}")
+                Log.e(TAG, "Backend token sync tarmoq xatosi.")
             }
         }
     }

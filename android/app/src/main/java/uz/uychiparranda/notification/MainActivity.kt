@@ -21,6 +21,7 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import uz.uychiparranda.notification.databinding.ActivityMainBinding
+import uz.uychiparranda.notification.security.SecurityHelper
 import uz.uychiparranda.notification.service.UychiFirebaseMessagingService
 
 class MainActivity : AppCompatActivity() {
@@ -54,12 +55,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun loadSavedSettings() {
-        val prefs = getSharedPreferences(UychiFirebaseMessagingService.PREFS_NAME, Context.MODE_PRIVATE)
-        binding.etBackendUrl.setText(prefs.getString(UychiFirebaseMessagingService.KEY_BACKEND_URL, UychiFirebaseMessagingService.DEFAULT_BACKEND_URL))
-        binding.etUsername.setText(prefs.getString(UychiFirebaseMessagingService.KEY_USERNAME, ""))
-        binding.etPassword.setText(prefs.getString(UychiFirebaseMessagingService.KEY_PASSWORD, ""))
+        val securePrefs = SecurityHelper.getSecurePreferences(this)
+        binding.etBackendUrl.setText(securePrefs.getString(UychiFirebaseMessagingService.KEY_BACKEND_URL, UychiFirebaseMessagingService.DEFAULT_BACKEND_URL))
+        binding.etUsername.setText(securePrefs.getString(UychiFirebaseMessagingService.KEY_USERNAME, ""))
+        binding.etPassword.setText(securePrefs.getString(UychiFirebaseMessagingService.KEY_PASSWORD, ""))
 
-        val isLoggedIn = prefs.getBoolean(UychiFirebaseMessagingService.KEY_IS_LOGGED_IN, false)
+        val isLoggedIn = securePrefs.getBoolean(UychiFirebaseMessagingService.KEY_IS_LOGGED_IN, false)
         updateUiState(isLoggedIn)
 
         fetchFcmToken()
@@ -67,15 +68,15 @@ class MainActivity : AppCompatActivity() {
 
     private fun updateUiState(isLoggedIn: Boolean) {
         if (isLoggedIn) {
-            val prefs = getSharedPreferences(UychiFirebaseMessagingService.PREFS_NAME, Context.MODE_PRIVATE)
-            val uName = prefs.getString(UychiFirebaseMessagingService.KEY_USERNAME, "")
-            val uRole = prefs.getString(UychiFirebaseMessagingService.KEY_USER_ROLE, "")
+            val securePrefs = SecurityHelper.getSecurePreferences(this)
+            val uName = securePrefs.getString(UychiFirebaseMessagingService.KEY_USERNAME, "")
+            val uRole = securePrefs.getString(UychiFirebaseMessagingService.KEY_USER_ROLE, "")
             binding.tvUserStatus.text = "Ulangan: $uName (Lavozim: $uRole)"
             binding.tvUserStatus.setTextColor(0xFF10B981.toInt())
             binding.btnLoginSync.visibility = View.GONE
             binding.btnLogout.visibility = View.VISIBLE
         } else {
-            binding.tvUserStatus.text = "Holat: Tizimga ulanmagan"
+            binding.tvUserStatus.text = "Holat: Tizimga ulanmagan (Qayta login talab qilinadi)"
             binding.tvUserStatus.setTextColor(0xFFEF4444.toInt())
             binding.btnLoginSync.visibility = View.VISIBLE
             binding.btnLogout.visibility = View.GONE
@@ -94,11 +95,11 @@ class MainActivity : AppCompatActivity() {
         FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
             if (task.isSuccessful) {
                 val token = task.result
-                binding.tvTokenStatus.text = "FCM Token: ${token.take(16)}... (Faol)"
-                val prefs = getSharedPreferences(UychiFirebaseMessagingService.PREFS_NAME, Context.MODE_PRIVATE)
-                prefs.edit().putString(UychiFirebaseMessagingService.KEY_FCM_TOKEN, token).apply()
+                binding.tvTokenStatus.text = "FCM Token: Faol"
+                val securePrefs = SecurityHelper.getSecurePreferences(this)
+                securePrefs.edit().putString(UychiFirebaseMessagingService.KEY_FCM_TOKEN, token).apply()
             } else {
-                binding.tvTokenStatus.text = "FCM Token kutilmoqda yoki sozlanmagan"
+                binding.tvTokenStatus.text = "FCM Token kutilmoqda..."
             }
         }
     }
@@ -117,7 +118,7 @@ class MainActivity : AppCompatActivity() {
         binding.btnLoginSync.text = "Autentifikatsiyadan o'tilmoqda..."
 
         FirebaseMessaging.getInstance().token.addOnCompleteListener { tokenTask ->
-            val token = if (tokenTask.isSuccessful) tokenTask.result else "offline_token_${System.currentTimeMillis()}"
+            val token = if (tokenTask.isSuccessful) tokenTask.result else "device_token_${System.currentTimeMillis()}"
 
             CoroutineScope(Dispatchers.IO).launch {
                 try {
@@ -148,8 +149,9 @@ class MainActivity : AppCompatActivity() {
                             val userObj = respJson.optJSONObject("user")
                             val role = userObj?.optString("role") ?: "xodim"
 
-                            val prefs = getSharedPreferences(UychiFirebaseMessagingService.PREFS_NAME, Context.MODE_PRIVATE)
-                            prefs.edit()
+                            // Android Keystore orqali shifrlab saqlash
+                            val securePrefs = SecurityHelper.getSecurePreferences(this@MainActivity)
+                            securePrefs.edit()
                                 .putString(UychiFirebaseMessagingService.KEY_BACKEND_URL, backendUrl)
                                 .putString(UychiFirebaseMessagingService.KEY_USERNAME, username)
                                 .putString(UychiFirebaseMessagingService.KEY_PASSWORD, password)
@@ -161,6 +163,7 @@ class MainActivity : AppCompatActivity() {
                             updateUiState(true)
                             Toast.makeText(this@MainActivity, "Muvaffaqiyatli ulandi! ($role)", Toast.LENGTH_LONG).show()
                         } else {
+                            updateUiState(false)
                             Toast.makeText(this@MainActivity, "Login xatoligi: Login yoki parol noto'g'ri!", Toast.LENGTH_LONG).show()
                         }
                     }
@@ -168,7 +171,7 @@ class MainActivity : AppCompatActivity() {
                     withContext(Dispatchers.Main) {
                         binding.btnLoginSync.isEnabled = true
                         binding.btnLoginSync.text = "Tizimga Kirish va Bog'lash"
-                        Toast.makeText(this@MainActivity, "Serverga ulanib bo'lmadi: ${e.message}", Toast.LENGTH_LONG).show()
+                        Toast.makeText(this@MainActivity, "Serverga ulanib bo'lmadi.", Toast.LENGTH_LONG).show()
                     }
                 }
             }
@@ -176,11 +179,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun performLogout() {
-        val prefs = getSharedPreferences(UychiFirebaseMessagingService.PREFS_NAME, Context.MODE_PRIVATE)
-        val backendUrl = prefs.getString(UychiFirebaseMessagingService.KEY_BACKEND_URL, UychiFirebaseMessagingService.DEFAULT_BACKEND_URL) ?: UychiFirebaseMessagingService.DEFAULT_BACKEND_URL
-        val token = prefs.getString(UychiFirebaseMessagingService.KEY_FCM_TOKEN, "")
-        val username = prefs.getString(UychiFirebaseMessagingService.KEY_USERNAME, "")
-        val password = prefs.getString(UychiFirebaseMessagingService.KEY_PASSWORD, "")
+        val securePrefs = SecurityHelper.getSecurePreferences(this)
+        val backendUrl = securePrefs.getString(UychiFirebaseMessagingService.KEY_BACKEND_URL, UychiFirebaseMessagingService.DEFAULT_BACKEND_URL) ?: UychiFirebaseMessagingService.DEFAULT_BACKEND_URL
+        val token = securePrefs.getString(UychiFirebaseMessagingService.KEY_FCM_TOKEN, "")
+        val username = securePrefs.getString(UychiFirebaseMessagingService.KEY_USERNAME, "")
+        val password = securePrefs.getString(UychiFirebaseMessagingService.KEY_PASSWORD, "")
 
         binding.btnLogout.isEnabled = false
         binding.btnLogout.text = "Chiqilmoqda..."
@@ -203,18 +206,15 @@ class MainActivity : AppCompatActivity() {
                     client.newCall(request).execute()
                 }
             } catch (e: Exception) {
-                // Logout tarmoq xatosi bo'lsa ham lokal tozalanadi
+                // Tarmoq xatosi bo'lsa ham lokal tozalanadi
             }
 
             withContext(Dispatchers.Main) {
                 binding.btnLogout.isEnabled = true
                 binding.btnLogout.text = "Hisobdan Chiqish"
-                prefs.edit()
-                    .putBoolean(UychiFirebaseMessagingService.KEY_IS_LOGGED_IN, false)
-                    .remove(UychiFirebaseMessagingService.KEY_PASSWORD)
-                    .apply()
+                SecurityHelper.clearSecureData(this@MainActivity)
                 updateUiState(false)
-                Toast.makeText(this@MainActivity, "Hisobdan chiqildi va qurilma uzildi.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@MainActivity, "Hisobdan chiqildi va qurilma xavfsiz uzildi.", Toast.LENGTH_SHORT).show()
             }
         }
     }
