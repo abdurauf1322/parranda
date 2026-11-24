@@ -415,3 +415,32 @@ class PushSubscriptionModel(db.Model):
             'createdAt': self.created_at.isoformat() if self.created_at else None
         }
 
+
+class FCMDeviceTokenModel(db.Model):
+    """
+    Android Native / FCM App push bildirishnomalari uchun tokenlar jadvali.
+    Bitta foydalanuvchida bir nechta qurilma bo'lishi mumkin.
+    """
+    __tablename__ = 'fcm_device_tokens'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    username = db.Column(db.String(64), nullable=True, index=True)
+    role = db.Column(db.String(64), nullable=True, index=True)
+    token = db.Column(db.String(512), unique=True, nullable=False, index=True)
+    device_name = db.Column(db.String(128), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    last_updated_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'userId': self.user_id,
+            'username': self.username,
+            'role': self.role,
+            'token': self.token,
+            'deviceName': self.device_name,
+            'createdAt': self.created_at.isoformat() if self.created_at else None,
+            'lastUpdatedAt': self.last_updated_at.isoformat() if self.last_updated_at else None
+        }
+

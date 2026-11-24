@@ -13,7 +13,7 @@ from models import (
     db, User, Branch, Attendance, Task, SlesarMilestoneModel,
     DailyFactoryReportModel, PhotoReportModel, ChatMessageModel,
     BranchInventoryItemModel, ChickenWeightRecordModel, PersonalNoteModel, AuditLogModel,
-    PushSubscriptionModel
+    PushSubscriptionModel, FCMDeviceTokenModel
 )
 from push_service import init_scheduler, broadcast_push_notification
 
@@ -749,6 +749,66 @@ def api_broadcast_push():
         user_id=user_id
     )
     return jsonify({'success': True, 'result': res})
+
+
+# -------------------------------------------------------------
+# 13. ANDROID NATIVE FCM TOKEN REGISTRATION
+# -------------------------------------------------------------
+
+@app.route('/api/fcm/register', methods=['POST'])
+def api_fcm_register():
+    """
+    Android Native ilovadan olingan FCM tokenini saqlash yoki yangilash.
+    """
+    data = request.get_json() or {}
+    token = data.get('token')
+    if not token:
+        return jsonify({'error': 'token majburiy'}), 400
+
+    username = data.get('username') or session.get('username')
+    role = data.get('role') or session.get('role')
+    user_id = data.get('userId') or session.get('user_id')
+    device_name = data.get('deviceName', 'Android Device')
+
+    # Agar token avval mavjud bo'lsa, ma'lumotlarini yangilash
+    existing = FCMDeviceTokenModel.query.filter_by(token=token).first()
+    if existing:
+        existing.user_id = user_id
+        existing.username = username
+        existing.role = role
+        existing.device_name = device_name
+        existing.last_updated_at = datetime.utcnow()
+    else:
+        new_device = FCMDeviceTokenModel(
+            user_id=user_id,
+            username=username,
+            role=role,
+            token=token,
+            device_name=device_name
+        )
+        db.session.add(new_device)
+
+    db.session.commit()
+    return jsonify({'success': True, 'message': 'FCM token saqlandi'})
+
+
+@app.route('/api/fcm/unregister', methods=['POST'])
+def api_fcm_unregister():
+    """
+    Foydalanuvchi logout bo'lganda qurilma tokenini o'chirish yoki foydalanuvchidan uzish.
+    """
+    data = request.get_json() or {}
+    token = data.get('token')
+    if not token:
+        return jsonify({'error': 'token majburiy'}), 400
+
+    existing = FCMDeviceTokenModel.query.filter_by(token=token).first()
+    if existing:
+        db.session.delete(existing)
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'FCM token tizimdan o\'chirildi'})
+
+    return jsonify({'success': True, 'message': 'Token topilmadi'})
 
 
 @app.route('/api/health')

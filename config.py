@@ -54,5 +54,13 @@ class Config:
         'sub': os.getenv('VAPID_SUB_EMAIL', 'mailto:admin@uychiparranda.uz')
     }
 
-    # 4. Frontend & CORS
+    # 4. Firebase Cloud Messaging (FCM) HTTP v1 & Service Account
+    FIREBASE_SERVICE_ACCOUNT_JSON = os.getenv('FIREBASE_SERVICE_ACCOUNT_JSON') # JSON matn shaklida
+    FIREBASE_SERVICE_ACCOUNT_PATH = os.getenv(
+        'FIREBASE_SERVICE_ACCOUNT_PATH',
+        os.path.join(basedir, 'firebase_service_account.json')
+    )
+    FIREBASE_PROJECT_ID = os.getenv('FIREBASE_PROJECT_ID')
+
+    # 5. Frontend & CORS
     FRONTEND_URL = os.getenv('FRONTEND_URL')
