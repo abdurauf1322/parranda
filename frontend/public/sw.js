@@ -2,7 +2,7 @@
 // Workbox manifest injection placeholder
 self.__WB_MANIFEST;
 
-const CACHE_NAME = 'uychi-parranda-v4';
+const CACHE_NAME = 'uychi-parranda-v5';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
@@ -113,7 +113,9 @@ self.addEventListener('push', (event) => {
     body: 'Yangi ogohlantirish yoki vazifa mavjud!',
     url: '/',
     icon: '/pwa-192x192.png',
-    badge: '/pwa-192x192.png'
+    badge: '/pwa-192x192.png',
+    silent: false,
+    requireInteraction: true
   };
 
   try {
@@ -131,13 +133,17 @@ self.addEventListener('push', (event) => {
     body: data.body,
     icon: data.icon || '/pwa-192x192.png',
     badge: data.badge || '/pwa-192x192.png',
-    vibrate: [200, 100, 200, 100, 400],
-    tag: data.tag || `up-push-${Date.now()}`,
+    vibrate: [300, 150, 300, 150, 450],
+    tag: data.tag || 'uychi-parranda-urgent-alert',
     renotify: true,
     requireInteraction: true,
+    silent: false,
     data: {
       url: data.url || '/'
-    }
+    },
+    actions: [
+      { action: 'open', title: 'Ochish' }
+    ]
   };
 
   event.waitUntil(

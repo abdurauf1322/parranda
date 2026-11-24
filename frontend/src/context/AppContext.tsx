@@ -53,6 +53,7 @@ import {
 } from '../data/mockData';
 import { soundSynth } from '../utils/audioAlert';
 import { registerWebPushSubscription } from '../utils/webPushHelper';
+import { triggerBackendPush } from '../utils/pushTrigger';
 import { compressImage } from '../utils/imageCompressor';
 import {
   COLLECTIONS,
@@ -1857,6 +1858,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setTasks((prev) => [newTask, ...prev]);
       saveDocument(COLLECTIONS.TASKS, newTask);
 
+      // Trigger Background Web Push Notification to the assigned employee/role
+      triggerBackendPush({
+        title: `📋 Yangi topshiriq: ${newTask.title}`,
+        body: `${currentUser.fullName} (${currentUser.role}) sizga yangi vazifa yukladi. Bino: ${newTask.building}`,
+        role: newTask.assignedToRole,
+        url: '/tasks'
+      });
+
       // If task priority is urgent, offer or auto-start 3-min recurring alarm
       if (newTask.priority === 'urgent') {
         start3MinAlert(newTask.title, newTask.description, newTask.id, 'task');
@@ -2475,6 +2484,16 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
       setChatMessages((prev) => [...prev, newMsg]);
       saveDocument(COLLECTIONS.CHAT_MESSAGES, newMsg);
+
+      // Trigger Web Push to all users for announcements, or relevant employees for regular messages
+      if (isAnnouncement) {
+        triggerBackendPush({
+          title: `📢 E'lon: ${currentUser.fullName}`,
+          body: newMsg.message.slice(0, 100),
+          url: '/chat'
+        });
+      }
+
       soundSynth.playMessageBeep();
     },
     [currentUser]

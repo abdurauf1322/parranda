@@ -725,6 +725,32 @@ def send_test_push():
     })
 
 
+@app.route('/api/push/broadcast', methods=['POST'])
+def api_broadcast_push():
+    data = request.get_json() or {}
+    title = data.get('title')
+    body = data.get('body')
+    role = data.get('role')
+    user_id = data.get('userId')
+    url = data.get('url', '/')
+
+    if not title or not body:
+        return jsonify({'error': 'Title va body talab qilinadi'}), 400
+
+    res = broadcast_push_notification(
+        app,
+        payload_dict={
+            'title': title,
+            'body': body,
+            'icon': '/pwa-192x192.png',
+            'url': url
+        },
+        role=role,
+        user_id=user_id
+    )
+    return jsonify({'success': True, 'result': res})
+
+
 @app.route('/api/health')
 def api_health():
     return jsonify({
