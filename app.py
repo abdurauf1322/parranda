@@ -18,24 +18,12 @@ from models import (
 from push_service import init_scheduler, broadcast_push_notification
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-FRONTEND_DIST = os.path.join(BASE_DIR, 'frontend', 'dist')
 
 app = Flask(__name__, static_folder=None)
 app.config.from_object(Config)
 
-# Enable CORS for React frontend (production FRONTEND_URL & local dev environments)
-frontend_origin = Config.FRONTEND_URL
-allowed_origins = [
-    'http://localhost:3000',
-    'http://localhost:4173',
-    'http://localhost:5173',
-    'http://127.0.0.1:3000',
-    'http://127.0.0.1:4173'
-]
-if frontend_origin:
-    allowed_origins.append(frontend_origin.rstrip('/'))
-
-CORS(app, origins=allowed_origins, supports_credentials=True)
+# Enable CORS for React Native (Expo) mobile clients & local dev
+CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
 
 db.init_app(app)
 
@@ -874,40 +862,13 @@ def api_health():
 
 
 @app.route('/')
-def serve_index():
-    index_file = os.path.join(FRONTEND_DIST, 'index.html')
-    if os.path.exists(index_file):
-        return send_from_directory(FRONTEND_DIST, 'index.html')
-    return jsonify({'error': 'React frontend build topilmadi. Iltimos frontend papkasida `npm run build` bajaring.'}), 404
-
-
-@app.route('/<path:path>')
-def serve_static_or_spa(path):
-    # Do not intercept API or Swagger routes
-    if path.startswith('api/') or path == 'api':
-        return jsonify({'error': 'API endpoint topilmadi'}), 404
-
-    # Handle PWA webmanifest specifically if requested as manifest.webmanifest
-    if path == 'manifest.webmanifest' and not os.path.exists(os.path.join(FRONTEND_DIST, path)):
-        if os.path.exists(os.path.join(FRONTEND_DIST, 'manifest.json')):
-            return send_from_directory(FRONTEND_DIST, 'manifest.json', mimetype='application/manifest+json')
-
-    target_file = os.path.join(FRONTEND_DIST, path)
-    if os.path.exists(target_file) and os.path.isfile(target_file):
-        # Set proper Service-Worker-Allowed and caching headers for sw.js
-        if path == 'sw.js':
-            response = send_from_directory(FRONTEND_DIST, path, mimetype='application/javascript')
-            response.headers['Service-Worker-Allowed'] = '/'
-            response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
-            return response
-        return send_from_directory(FRONTEND_DIST, path)
-
-    # SPA Fallback (React Router refresh support)
-    index_file = os.path.join(FRONTEND_DIST, 'index.html')
-    if os.path.exists(index_file):
-        return send_from_directory(FRONTEND_DIST, 'index.html')
-
-    return jsonify({'error': 'Sahifa topilmadi'}), 404
+def index():
+    return jsonify({
+        'status': 'online',
+        'app': 'Uychi Parranda API Server',
+        'client': 'React Native (Expo) Mobile App',
+        'health': '/api/health'
+    })
 
 
 if __name__ == '__main__':

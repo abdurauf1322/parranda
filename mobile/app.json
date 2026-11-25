@@ -1,0 +1,51 @@
+{
+  "expo": {
+    "name": "Uychi Parranda",
+    "slug": "uychi-parranda",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0F172A"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "uz.uychiparranda.mobile"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0F172A"
+      },
+      "package": "uz.uychiparranda.mobile",
+      "permissions": [
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.VIBRATE",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE"
+      ]
+    },
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#22C55E",
+          "defaultChannel": "uychi_parranda_urgent_channel"
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Foto-hisobotlarni yuklash uchun galereyaga ruxsat bering.",
+          "cameraPermission": "Foto-hisobotlarni suratga olish uchun kameraga ruxsat bering."
+        }
+      ]
+    ]
+  }
+}

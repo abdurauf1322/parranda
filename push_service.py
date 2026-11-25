@@ -121,11 +121,53 @@ def get_fcm_access_token():
         return None, None
 
 
+def send_expo_push_notification(expo_token, title, body, data_dict=None):
+    """
+    Expo Push API (https://exp.host/--/api/v2/push/send) orqali
+    React Native (Expo) mobil ilovasiga yuqori ustuvorlikdagi push xabar yuborish.
+    """
+    url = "https://exp.host/--/api/v2/push/send"
+    payload = {
+        "to": expo_token,
+        "title": str(title),
+        "body": str(body),
+        "sound": "default",
+        "priority": "high",
+        "channelId": "uychi_parranda_urgent_channel",
+        "data": data_dict or {}
+    }
+    try:
+        req = urllib.request.Request(
+            url,
+            data=json.dumps(payload).encode('utf-8'),
+            headers={
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            }
+        )
+        with urllib.request.urlopen(req, timeout=10) as response:
+            res_body = response.read().decode('utf-8')
+            logger.info(f"Expo push muvaffaqiyatli: {res_body}")
+            return True, response.status, None
+    except urllib.error.HTTPError as e:
+        err_body = e.read().decode('utf-8')
+        logger.warning(f"Expo push HTTP error {e.code}: {err_body}")
+        return False, e.code, err_body
+    except Exception as ex:
+        logger.error(f"Expo push yuborishda xatolik: {ex}")
+        return False, None, str(ex)
+
+
 def send_fcm_v1_notification(device_token, title, body, data_dict=None):
     """
-    FCM HTTP v1 API orqali Android qurilmaga bildirishnoma yuborish.
-    High-priority Android config bilan fonga darhol uyg'otuvchi qilib uzatiladi.
+    Agar token ExponentPushToken[...] bo'lsa Expo Push API ga,
+    aks holda FCM HTTP v1 API orqali Android qurilmaga bildirishnoma yuborish.
     """
+    if isinstance(device_token, str) and (
+        device_token.startswith("ExponentPushToken[") or device_token.startswith("ExpoPushToken[")
+    ):
+        return send_expo_push_notification(device_token, title, body, data_dict)
+
     token, project_id = get_fcm_access_token()
     if not token or not project_id:
         return False, None, "Firebase konfiguratsiya qilinmagan"
