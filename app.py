@@ -30,6 +30,9 @@ db.init_app(app)
 with app.app_context():
     try:
         db.create_all()
+        if User.query.count() == 0:
+            from seed_data import seed_database
+            seed_database(app)
     except Exception as e:
         print(f"[DB WARNING] db.create_all() xatosi (baza ulanishi tekshirilishi kerak): {e}")
 

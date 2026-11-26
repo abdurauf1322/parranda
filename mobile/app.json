@@ -18,7 +18,9 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png",
         "backgroundColor": "#0F172A"
       },
       "package": "uz.uychiparranda.mobile",
@@ -27,7 +29,8 @@
         "android.permission.VIBRATE",
         "android.permission.RECEIVE_BOOT_COMPLETED",
         "android.permission.CAMERA",
-        "android.permission.READ_EXTERNAL_STORAGE"
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.RECORD_AUDIO"
       ]
     },
     "plugins": [
@@ -46,6 +49,11 @@
           "cameraPermission": "Foto-hisobotlarni suratga olish uchun kameraga ruxsat bering."
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "4f2e4a80-5860-40fc-ae24-07fde83d483e"
+      }
+    }
   }
 }

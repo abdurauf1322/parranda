@@ -4,14 +4,15 @@ Runs once to populate SQLite/PostgreSQL with initial 12 users, 5 branches,
 10 Slesar milestones, initial inventory, and tasks.
 """
 
-from app import app
 from models import (
     db, User, Branch, SlesarMilestoneModel,
     BranchInventoryItemModel, Task, PersonalNoteModel
 )
 
-def seed_database():
-    with app.app_context():
+def seed_database(flask_app=None):
+    if flask_app is None:
+        from app import app as flask_app
+    with flask_app.app_context():
         print("Baza jadvallarini yaratish...")
         db.create_all()
 
