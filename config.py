@@ -33,9 +33,15 @@ class Config:
         elif raw_db_url.startswith('postgresql://'):
             raw_db_url = raw_db_url.replace('postgresql://', 'postgresql+psycopg://', 1)
         SQLALCHEMY_DATABASE_URI = raw_db_url
+        SQLALCHEMY_ENGINE_OPTIONS = (
+            {'pool_pre_ping': True, 'connect_args': {'connect_timeout': 5}}
+            if 'postgresql' in raw_db_url
+            else {}
+        )
     else:
         # Lokal ishlab chiqish uchun avtomatik SQLite fallback
         SQLALCHEMY_DATABASE_URI = 'sqlite:///uychi_parranda.db'
+        SQLALCHEMY_ENGINE_OPTIONS = {}
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     CORS_HEADERS = 'Content-Type'

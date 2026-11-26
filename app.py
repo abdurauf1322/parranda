@@ -28,7 +28,10 @@ CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
 db.init_app(app)
 
 with app.app_context():
-    db.create_all()
+    try:
+        db.create_all()
+    except Exception as e:
+        print(f"[DB WARNING] db.create_all() xatosi (baza ulanishi tekshirilishi kerak): {e}")
 
 # Initialize APScheduler for automated background alerts
 init_scheduler(app)
