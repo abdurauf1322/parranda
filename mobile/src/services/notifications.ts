@@ -178,6 +178,23 @@ export async function sendLocalTestNotification(customTitle?: string, customBody
   });
 }
 
+export async function sendBackgroundTestNotification() {
+  if (Platform.OS === 'web') return;
+  await setupAndroidNotificationChannel();
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title: '🔔 Uychi Parranda — Fon (Background) Testi',
+      body: 'Ilovadan chiqqan holatda ham bildirishnoma ishlayapti!',
+      sound: 'default',
+    },
+    trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+      seconds: 5,
+      channelId: 'uychi_parranda_urgent_channel',
+    },
+  });
+}
+
 export async function unregisterPushToken(token: string, username?: string) {
   try {
     await api.post('/api/fcm/unregister', { token, username });

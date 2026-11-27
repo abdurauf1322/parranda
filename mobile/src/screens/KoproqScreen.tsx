@@ -30,6 +30,7 @@ import {
   getPushDiagnostics,
   registerForPushNotificationsAsync,
   sendLocalTestNotification,
+  sendBackgroundTestNotification,
 } from '../services/notifications';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -185,6 +186,7 @@ export const KoproqScreen: React.FC = () => {
   const handleTestPush = async () => {
     const diag = await getPushDiagnostics();
     await sendLocalTestNotification();
+    await sendBackgroundTestNotification();
     if (diag.token) {
       await registerForPushNotificationsAsync();
     }
@@ -192,8 +194,8 @@ export const KoproqScreen: React.FC = () => {
       const res = await api.post('/api/push/send-test', { role: user?.role });
       const sent = res.data?.sentCount ?? 0;
       const msg = diag.token
-        ? `Ruxsat: OK\nToken saqlandi!\nServer yubordi: ${sent} ta qurilma.`
-        : `Lokal signal yuborildi.\nPush token xatosi: ${diag.error || 'noma’lum'}`;
+        ? `Ruxsat: OK\nToken saqlandi!\nServer yubordi: ${sent} ta qurilma.\n5 soniyadan keyin fon testi ham keladi — ilovadan chiqib ko‘ring!`
+        : `Lokal va 5 soniyalik fon signali rejalashtirildi (ilovadan chiqib ko‘ring).\n\nServer Push token xatosi: ${diag.error || 'noma’lum'}`;
       if (Platform.OS === 'web') window.alert(msg);
       else Alert.alert('Bildirishnoma Holati', msg);
     } catch {
