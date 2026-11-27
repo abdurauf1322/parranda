@@ -224,6 +224,57 @@ def complete_milestone(mid):
     return jsonify({'success': True, 'milestone': m.to_dict()})
 
 
+@app.route('/api/slesar/milestones/<int:mid>', methods=['PUT'])
+def update_milestone(mid):
+    m = SlesarMilestoneModel.query.get(mid)
+    if not m:
+        return jsonify({'error': 'Bosqich topilmadi'}), 404
+
+    data = request.get_json() or {}
+    if 'time' in data and data['time']:
+        m.time = data['time']
+        # 3 daqiqa oldin ogohlantirish vaqtini hisoblash
+        try:
+            hh, mm = map(int, m.time.split(':')[:2])
+            total_min = max(0, hh * 60 + mm - 3)
+            m.alert_time = f"{total_min // 60:02d}:{total_min % 60:02d}"
+        except Exception:
+            pass
+    if 'title' in data and data['title']:
+        m.title = data['title']
+    if 'description' in data:
+        m.description = data['description']
+    db.session.commit()
+    return jsonify({'success': True, 'milestone': m.to_dict()})
+
+
+@app.route('/api/slesar/milestones', methods=['POST'])
+def create_milestone():
+    data = request.get_json() or {}
+    t = (data.get('time') or '').strip()
+    title = (data.get('title') or '').strip()
+    if not t or not title:
+        return jsonify({'error': 'Vaqt va nom majburiy'}), 400
+    alert_t = data.get('alertTime')
+    if not alert_t:
+        try:
+            hh, mm = map(int, t.split(':')[:2])
+            total_min = max(0, hh * 60 + mm - 3)
+            alert_t = f"{total_min // 60:02d}:{total_min % 60:02d}"
+        except Exception:
+            alert_t = t
+    m = SlesarMilestoneModel(
+        time=t,
+        alert_time=alert_t,
+        title=title,
+        description=data.get('description', ''),
+        status='kutilmoqda'
+    )
+    db.session.add(m)
+    db.session.commit()
+    return jsonify({'success': True, 'milestone': m.to_dict()}), 201
+
+
 # -------------------------------------------------------------
 # 5. TASKS & 1-5 STARS EVALUATION
 # -------------------------------------------------------------
@@ -439,6 +490,16 @@ def add_personal_note():
     db.session.add(note)
     db.session.commit()
     return jsonify({'success': True, 'note': note.to_dict()})
+
+
+@app.route('/api/notes/<int:nid>', methods=['DELETE'])
+def delete_personal_note(nid):
+    note = PersonalNoteModel.query.get(nid)
+    if not note:
+        return jsonify({'error': 'Zametka topilmadi'}), 404
+    db.session.delete(note)
+    db.session.commit()
+    return jsonify({'success': True})
 
 
 # -------------------------------------------------------------

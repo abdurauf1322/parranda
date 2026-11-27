@@ -70,7 +70,7 @@ export const ChatScreen: React.FC = () => {
     >
       <FlatList
         data={messages}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => String(item.id)}
         contentContainerStyle={{ padding: 16 }}
         renderItem={({ item }) => {
           const mine = item.senderName === user?.fullName;

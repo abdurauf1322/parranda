@@ -8,8 +8,20 @@ export interface User {
   isActive: boolean;
 }
 
+export interface BranchInfo {
+  id: number;
+  branchId: string;
+  name: string;
+  location: string;
+  birdCapacity: number;
+  currentBirds: number;
+  dailyEggTarget: number;
+  status: string;
+  managerName: string;
+}
+
 export interface SlesarMilestone {
-  id: string;
+  id: number | string;
   time: string;
   alertTime: string;
   title: string;
@@ -20,20 +32,24 @@ export interface SlesarMilestone {
 }
 
 export interface TaskItem {
-  id: string;
+  id: number | string;
   title: string;
   description?: string;
+  assignedByName?: string;
+  assignedByRole?: string;
   assignedToRole: string;
-  assignedToUserId?: number;
-  assignedBy?: string;
+  assignedToName?: string;
+  building?: string;
   dueTime?: string;
-  status: 'kutilmoqda' | 'jarayonda' | 'bajarildi';
+  status: 'kutilmoqda' | 'jarayonda' | 'bajarildi' | 'tasdiqlandi' | 'yangi';
   priority?: string;
+  evaluationScore?: number;
+  evaluationNote?: string;
   createdAt?: string;
 }
 
 export interface ChatMessage {
-  id: string;
+  id: number | string;
   senderId?: number;
   senderName: string;
   senderRole: string;
@@ -43,25 +59,29 @@ export interface ChatMessage {
 }
 
 export interface InventoryItem {
-  id: string;
+  id: number | string;
   branchId: string;
-  itemName: string;
+  name: string;
   category: string;
   quantity: number;
   unit: string;
   minThreshold?: number;
-  updatedAt?: string;
+  lastUpdated?: string;
 }
 
 export interface ChickenWeightRecord {
-  id: string;
+  id: number | string;
   branchId: string;
-  houseName: string;
-  ageDays: number;
-  averageWeightGrams: number;
-  sampleCount: number;
-  recordedBy: string;
-  date: string;
+  building: string;
+  cageNumber: string;
+  batchNumber?: string;
+  birdAgeDays: number;
+  sampleSize: number;
+  avgWeightGrams: number;
+  targetWeightGrams: number;
+  measuredBy: string;
+  measuredDate: string;
+  notes?: string;
 }
 
 export interface AttendanceRecord {
@@ -76,18 +96,34 @@ export interface AttendanceRecord {
 }
 
 export interface PhotoReport {
-  id: string;
-  userId?: number;
-  userName: string;
-  role: string;
+  id: number | string;
+  uploaderName: string;
+  uploaderRole: string;
+  title: string;
   category: string;
-  caption: string;
+  building?: string;
   imageUrl: string;
   timestamp: string;
+  notes?: string;
+  status?: string;
+}
+
+export interface DailyFactoryReport {
+  id: number;
+  date: string;
+  building: string;
+  birdsCount: number;
+  eggsCollectedTotal: number;
+  mortalityCount: number;
+  feedConsumedKg: number;
+  avgTemperature: number;
+  submittedByName: string;
+  submittedAt: string;
+  notes?: string;
 }
 
 export interface PersonalNote {
-  id: string;
+  id: number | string;
   userId: number;
   title: string;
   content: string;
@@ -96,12 +132,15 @@ export interface PersonalNote {
 
 export const ROLE_LABELS: Record<string, string> = {
   direktor: 'Direktor',
-  bosh_energetik: 'Bosh Energetik',
-  bosh_muhandis: 'Bosh Muhandis',
+  kadrlar: 'Kadrlar',
+  statistikachi: 'Statistikachi',
+  ish_boshqaruvchi: 'Ish Boshqaruvchi',
+  veterinar: 'Veterinar',
   elektrik: 'Elektrik',
   slesar: 'Slesar / Yem',
-  veterinar: 'Veterinar',
-  operator: 'Operator',
-  omborchi: 'Omborchi',
-  ishchi: 'Xodim',
+  haydovchi_tuxum: 'Haydovchi (Tuxum)',
+  haydovchi_yem: 'Haydovchi (Yem)',
+  qorovul: 'Qorovul',
+  oshpaz: 'Oshpaz',
+  tozalik: 'Tozalik',
 };
