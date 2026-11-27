@@ -5,15 +5,17 @@ import { Platform } from 'react-native';
 import { api } from './api';
 import { SlesarMilestone } from '../types';
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
+if (Platform.OS !== 'web') {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: true,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    }),
+  });
+}
 
 export async function setupAndroidNotificationChannel() {
   if (Platform.OS === 'android') {
@@ -158,10 +160,15 @@ export async function sendLocalTestNotification(customTitle?: string, customBody
         osc.start();
         osc.stop(ctx.currentTime + 0.25);
       }
-      if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification(title, { body });
+      if ('Notification' in window) {
+        if (Notification.permission === 'default') {
+          await Notification.requestPermission();
+        }
+        if (Notification.permission === 'granted') {
+          new Notification(title, { body });
+        }
       }
-    } catch {}
+    } catch { }
     return;
   }
   await setupAndroidNotificationChannel();
