@@ -8,7 +8,7 @@ import logging
 import os
 import base64
 import time
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 import urllib.request
 import urllib.error
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -408,11 +408,12 @@ def broadcast_push_notification(app, payload_dict, role=None, user_id=None, chan
 def check_scheduled_milestones_and_alerts(app):
     """
     Scheduled job (runs every 60 seconds):
-    1. Checks if current time matches any SlesarMilestone alert_time ("HH:MM").
-    2. Sends background Web Push to slesar and direktor if milestone is pending.
+    1. Checks if current Uzbekistan time (UTC+5) matches any SlesarMilestone alert_time ("HH:MM").
+    2. Sends background Push to slesar and direktor if milestone is pending.
     """
     with app.app_context():
-        now_str = datetime.now().strftime('%H:%M')
+        uz_tz = timezone(timedelta(hours=5))
+        now_str = datetime.now(uz_tz).strftime('%H:%M')
         pending_milestones = SlesarMilestoneModel.query.filter_by(
             alert_time=now_str,
             status='kutilmoqda'

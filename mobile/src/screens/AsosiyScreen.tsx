@@ -13,6 +13,7 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import { Clock, CheckCircle2, CalendarCheck2, ClipboardList, Edit2, Plus, Bell } from 'lucide-react-native';
 import { api } from '../services/api';
+import { scheduleLocalMilestoneNotifications } from '../services/notifications';
 import { useAuth } from '../context/AuthContext';
 import { SlesarMilestone } from '../types';
 import { COLORS, CONTAINER_MAX, CARD_SHADOW } from '../theme';
@@ -45,7 +46,10 @@ export const AsosiyScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         api.get('/api/slesar/milestones'),
         api.get('/api/attendance'),
       ]);
-      if (Array.isArray(mRes.data)) setMilestones(mRes.data);
+      if (Array.isArray(mRes.data)) {
+        setMilestones(mRes.data);
+        scheduleLocalMilestoneNotifications(mRes.data);
+      }
       if (Array.isArray(aRes.data) && user) {
         const today = new Date().toISOString().slice(0, 10);
         const mine = aRes.data.find(

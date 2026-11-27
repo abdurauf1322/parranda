@@ -23,8 +23,14 @@ import {
   ClipboardList,
   Trash2,
   KeyRound,
+  Bell,
 } from 'lucide-react-native';
 import { api } from '../services/api';
+import {
+  getPushDiagnostics,
+  registerForPushNotificationsAsync,
+  sendLocalTestNotification,
+} from '../services/notifications';
 import { useAuth } from '../context/AuthContext';
 import {
   AttendanceRecord,
@@ -173,6 +179,27 @@ export const KoproqScreen: React.FC = () => {
       Alert.alert('Tayyor', 'Parol muvaffaqiyatli o‘zgartirildi');
     } catch (e: any) {
       Alert.alert('Xatolik', e?.response?.data?.message || 'Parol o‘zgartirilmadi');
+    }
+  };
+
+  const handleTestPush = async () => {
+    const diag = await getPushDiagnostics();
+    await sendLocalTestNotification();
+    if (diag.token) {
+      await registerForPushNotificationsAsync();
+    }
+    try {
+      const res = await api.post('/api/push/send-test', { role: user?.role });
+      const sent = res.data?.sentCount ?? 0;
+      const msg = diag.token
+        ? `Ruxsat: OK\nToken saqlandi!\nServer yubordi: ${sent} ta qurilma.`
+        : `Lokal signal yuborildi.\nPush token xatosi: ${diag.error || 'noma’lum'}`;
+      if (Platform.OS === 'web') window.alert(msg);
+      else Alert.alert('Bildirishnoma Holati', msg);
+    } catch {
+      const msg = diag.error || 'Server test so‘rovida xatolik';
+      if (Platform.OS === 'web') window.alert(msg);
+      else Alert.alert('Bildirishnoma Holati', msg);
     }
   };
 
@@ -351,7 +378,14 @@ export const KoproqScreen: React.FC = () => {
           </View>
         </View>
 
-        <View style={{ flexDirection: 'row', gap: 10, marginTop: 16 }}>
+        <View style={{ flexDirection: 'row', gap: 10, marginTop: 12 }}>
+          <TouchableOpacity style={styles.pwBtn} onPress={handleTestPush}>
+            <Bell size={16} color={COLORS.amber} />
+            <Text style={[styles.pwText, { color: COLORS.amber }]}>Signal / Push Testi</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
           <TouchableOpacity style={styles.pwBtn} onPress={() => setPwModal(true)}>
             <KeyRound size={16} color={COLORS.textMuted} />
             <Text style={styles.pwText}>Parolni o‘zgartirish</Text>

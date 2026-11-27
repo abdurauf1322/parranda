@@ -35,7 +35,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     (async () => {
       try {
         const saved = await getUserSession();
-        if (saved) setUser(saved);
+        if (saved) {
+          setUser(saved);
+          const token = await registerForPushNotificationsAsync();
+          if (token) {
+            await AsyncStorage.setItem(STORAGE_KEYS.PUSH_TOKEN, token);
+          }
+        }
       } finally {
         setLoading(false);
       }
