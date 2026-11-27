@@ -3,25 +3,39 @@ import {
   View,
   Text,
   FlatList,
+  ScrollView,
   TouchableOpacity,
   StyleSheet,
   RefreshControl,
   Modal,
   TextInput,
   Alert,
+  Platform,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { Boxes, Scale, Plus } from 'lucide-react-native';
+import { Boxes, Scale, Plus, Search, Trash2, Edit2 } from 'lucide-react-native';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { InventoryItem, ChickenWeightRecord } from '../types';
 import { COLORS, CONTAINER_MAX, CARD_SHADOW } from '../theme';
+
+const BRANCH_OPTIONS = [
+  { id: 'all', label: 'Barcha Filiallar' },
+  { id: 'chortoq', label: 'Chortoq' },
+  { id: 'pop', label: 'Pop' },
+  { id: 'yangiqorgon', label: 'Yangiqo‘rg‘on' },
+  { id: 'kosonsoy', label: 'Kosonsoy' },
+  { id: 'norin', label: 'Norin' },
+];
 
 export const OmborVaznScreen: React.FC = () => {
   const { user } = useAuth();
   const [tab, setTab] = useState<'inventory' | 'weights'>('inventory');
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [weights, setWeights] = useState<ChickenWeightRecord[]>([]);
+  const [branchFilter, setBranchFilter] = useState('all');
+  const [catFilter, setCatFilter] = useState('all');
+  const [searchText, setSearchText] = useState('');
   const [refreshing, setRefreshing] = useState(false);
 
   const [invModal, setInvModal] = useState(false);
@@ -29,6 +43,7 @@ export const OmborVaznScreen: React.FC = () => {
   const [invCategory, setInvCategory] = useState('yem');
   const [invQty, setInvQty] = useState('');
   const [invUnit, setInvUnit] = useState('kg');
+  const [invMin, setInvMin] = useState('500');
 
   const [editInv, setEditInv] = useState<InventoryItem | null>(null);
   const [editQty, setEditQty] = useState('');
@@ -72,11 +87,12 @@ export const OmborVaznScreen: React.FC = () => {
     }
     try {
       await api.post('/api/inventory', {
-        branchId: user?.branchId || 'chortoq',
+        branchId: branchFilter !== 'all' ? branchFilter : user?.branchId || 'chortoq',
         name: invName.trim(),
         category: invCategory,
         quantity: Number(invQty) || 0,
         unit: invUnit.trim() || 'kg',
+        minThreshold: Number(invMin) || 100,
       });
       setInvName('');
       setInvQty('');
@@ -100,6 +116,25 @@ export const OmborVaznScreen: React.FC = () => {
     }
   };
 
+  const handleDeleteInventory = async (id: number | string) => {
+    const go = async () => {
+      try {
+        await api.delete(`/api/inventory/${id}`);
+        await loadData();
+      } catch {
+        Alert.alert('Xatolik', 'Mahsulot o‘chirilmadi');
+      }
+    };
+    if (Platform.OS === 'web') {
+      if (window.confirm('Ushbu mahsulotni o‘chirmoqchimisiz?')) go();
+    } else {
+      Alert.alert('O‘chirish', 'Ushbu mahsulotni o‘chirmoqchimisiz?', [
+        { text: 'Bekor', style: 'cancel' },
+        { text: 'O‘chirish', style: 'destructive', onPress: go },
+      ]);
+    }
+  };
+
   const handleAddWeight = async () => {
     if (!wAvg.trim()) {
       Alert.alert('Diqqat', 'O‘rtacha vaznni (gramm) kiriting');
@@ -107,7 +142,7 @@ export const OmborVaznScreen: React.FC = () => {
     }
     try {
       await api.post('/api/weights', {
-        branchId: user?.branchId || 'chortoq',
+        branchId: branchFilter !== 'all' ? branchFilter : user?.branchId || 'chortoq',
         building: wBuilding.trim() || '1-Bino',
         cageNumber: wCage.trim() || 'Qafas-A1',
         birdAgeDays: Number(wAge) || 30,
@@ -123,6 +158,20 @@ export const OmborVaznScreen: React.FC = () => {
     }
   };
 
+  const filteredInventory = inventory.filter((item) => {
+    if (branchFilter !== 'all' && item.branchId !== branchFilter) return false;
+    if (catFilter !== 'all' && item.category !== catFilter) return false;
+    if (searchText.trim() && !item.name.toLowerCase().includes(searchText.trim().toLowerCase())) {
+      return false;
+    }
+    return true;
+  });
+
+  const filteredWeights = weights.filter((w) => {
+    if (branchFilter !== 'all' && w.branchId !== branchFilter) return false;
+    return true;
+  });
+
   return (
     <View style={styles.container}>
       <View style={styles.topWrap}>
@@ -134,7 +183,7 @@ export const OmborVaznScreen: React.FC = () => {
             >
               <Boxes size={16} color={tab === 'inventory' ? '#090E1A' : COLORS.textMuted} />
               <Text style={[styles.switchText, tab === 'inventory' && styles.switchTextActive]}>
-                Ombor ({inventory.length})
+                Ombor ({filteredInventory.length})
               </Text>
             </TouchableOpacity>
 
@@ -144,7 +193,7 @@ export const OmborVaznScreen: React.FC = () => {
             >
               <Scale size={16} color={tab === 'weights' ? '#090E1A' : COLORS.textMuted} />
               <Text style={[styles.switchText, tab === 'weights' && styles.switchTextActive]}>
-                Vazn ({weights.length})
+                Vazn ({filteredWeights.length})
               </Text>
             </TouchableOpacity>
           </View>
@@ -156,43 +205,117 @@ export const OmborVaznScreen: React.FC = () => {
             <Plus size={18} color="#090E1A" strokeWidth={2.5} />
           </TouchableOpacity>
         </View>
+
+        {/* Branch filter chips */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }}>
+          <View style={styles.filterRow}>
+            {BRANCH_OPTIONS.map((b) => (
+              <TouchableOpacity
+                key={b.id}
+                style={[styles.filterChip, branchFilter === b.id && styles.filterChipActive]}
+                onPress={() => setBranchFilter(b.id)}
+              >
+                <Text style={[styles.filterText, branchFilter === b.id && styles.filterTextActive]}>
+                  {b.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </ScrollView>
+
+        {tab === 'inventory' && (
+          <View style={styles.searchRow}>
+            <View style={styles.searchBox}>
+              <Search size={14} color={COLORS.textDim} />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Zahira nomi bo‘yicha qidirish..."
+                placeholderTextColor={COLORS.textDim}
+                value={searchText}
+                onChangeText={setSearchText}
+              />
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View style={styles.filterRow}>
+                {['all', 'yem', 'dori', 'ehtiyot_qismlar', 'tara'].map((c) => (
+                  <TouchableOpacity
+                    key={c}
+                    style={[styles.catChip, catFilter === c && styles.catChipActive]}
+                    onPress={() => setCatFilter(c)}
+                  >
+                    <Text style={[styles.filterText, catFilter === c && { color: COLORS.sky }]}>
+                      {c === 'all' ? 'Barcha toifa' : c}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
+          </View>
+        )}
       </View>
 
       {tab === 'inventory' ? (
         <FlatList
-          data={inventory}
+          data={filteredInventory}
           keyExtractor={(item) => String(item.id)}
           contentContainerStyle={[CONTAINER_MAX, { padding: 16, paddingBottom: 32 }]}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />}
           renderItem={({ item }) => {
             const low = item.minThreshold != null && item.quantity <= item.minThreshold;
             return (
-              <TouchableOpacity
-                style={[styles.card, CARD_SHADOW, low && { borderColor: COLORS.danger }]}
-                onPress={() => {
-                  setEditInv(item);
-                  setEditQty(String(item.quantity));
-                }}
-              >
+              <View style={[styles.card, CARD_SHADOW, low && { borderColor: COLORS.danger }]}>
                 <View style={styles.rowBetween}>
-                  <Text style={[styles.itemTitle, { flex: 1, marginRight: 8 }]}>{item.name}</Text>
-                  <View style={[styles.qtyBadge, low && { backgroundColor: COLORS.dangerSoft }]}>
-                    <Text style={[styles.qty, low && { color: COLORS.danger }]}>
-                      {item.quantity} {item.unit}
+                  <Text style={styles.branchTag}>{item.branchId.toUpperCase()}</Text>
+                  <View style={[styles.statusBadge, low ? styles.statusLow : styles.statusOk]}>
+                    <Text style={[styles.statusText, { color: low ? COLORS.danger : COLORS.primary }]}>
+                      {low ? 'Kam qoldi' : 'Yetarli'}
                     </Text>
                   </View>
                 </View>
-                <Text style={styles.sub}>
-                  {item.category} • Filial: {item.branchId} • Tahrirlash uchun bosing
-                </Text>
-              </TouchableOpacity>
+
+                <Text style={styles.itemTitle}>{item.name}</Text>
+
+                <View style={styles.qtyBox}>
+                  <View>
+                    <Text style={styles.qtyLabel}>Joriy Zahira Miqdori:</Text>
+                    <Text style={[styles.qty, low && { color: COLORS.danger }]}>
+                      {item.quantity.toLocaleString()} {item.unit}
+                    </Text>
+                  </View>
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <Text style={styles.qtyLabel}>Min. Chegara:</Text>
+                    <Text style={styles.minVal}>
+                      {item.minThreshold ?? 0} {item.unit}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.cardActions}>
+                  <Text style={styles.sub}>{item.lastUpdated || item.category}</Text>
+                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                    <TouchableOpacity
+                      style={styles.editBtn}
+                      onPress={() => {
+                        setEditInv(item);
+                        setEditQty(String(item.quantity));
+                      }}
+                    >
+                      <Edit2 size={12} color={COLORS.textMuted} />
+                      <Text style={styles.editBtnText}>O‘zgartirish</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.delBtn} onPress={() => handleDeleteInventory(item.id)}>
+                      <Trash2 size={14} color={COLORS.danger} />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
             );
           }}
           ListEmptyComponent={<Text style={styles.empty}>Ombor ma’lumotlari yo‘q</Text>}
         />
       ) : (
         <FlatList
-          data={weights}
+          data={filteredWeights}
           keyExtractor={(item) => String(item.id)}
           contentContainerStyle={[CONTAINER_MAX, { padding: 16, paddingBottom: 32 }]}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />}
@@ -204,7 +327,7 @@ export const OmborVaznScreen: React.FC = () => {
                   <Text style={styles.itemTitle}>
                     {item.building} • {item.cageNumber}
                   </Text>
-                  <View style={styles.qtyBadge}>
+                  <View style={styles.statusOk}>
                     <Text style={styles.qty}>{item.avgWeightGrams} g</Text>
                   </View>
                 </View>
@@ -225,7 +348,7 @@ export const OmborVaznScreen: React.FC = () => {
       <Modal visible={invModal} transparent animationType="slide">
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Omborga Mahsulot Qo‘shish</Text>
+            <Text style={styles.modalTitle}>Omborga Yangi Zahira Qo‘shish</Text>
             <TextInput
               style={styles.input}
               placeholder="Mahsulot nomi (masalan: Kombikorm PK-1)"
@@ -254,13 +377,21 @@ export const OmborVaznScreen: React.FC = () => {
                 onChangeText={setInvQty}
               />
               <TextInput
-                style={[styles.input, { width: 90 }]}
-                placeholder="Birlik (kg)"
+                style={[styles.input, { width: 85 }]}
+                placeholder="Birlik"
                 placeholderTextColor={COLORS.textDim}
                 value={invUnit}
                 onChangeText={setInvUnit}
               />
             </View>
+            <TextInput
+              style={styles.input}
+              placeholder="Min. chegara (masalan: 500)"
+              placeholderTextColor={COLORS.textDim}
+              keyboardType="numeric"
+              value={invMin}
+              onChangeText={setInvMin}
+            />
             <View style={styles.modalBtns}>
               <TouchableOpacity style={styles.cancelBtn} onPress={() => setInvModal(false)}>
                 <Text style={{ color: COLORS.textMuted, fontWeight: '600' }}>Bekor</Text>
@@ -362,84 +493,46 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.bg },
   topWrap: { ...CONTAINER_MAX, paddingHorizontal: 16, paddingTop: 14 },
   topRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  switchRow: {
-    flex: 1,
-    flexDirection: 'row',
-    gap: 6,
-    backgroundColor: COLORS.surface,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    padding: 4,
-    borderRadius: 12,
-  },
-  switchBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 10,
-    borderRadius: 9,
-  },
+  switchRow: { flex: 1, flexDirection: 'row', gap: 6, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border, padding: 4, borderRadius: 12 },
+  switchBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 9 },
   switchActive: { backgroundColor: COLORS.primary },
   switchText: { color: COLORS.textMuted, fontWeight: '700', fontSize: 13 },
   switchTextActive: { color: '#090E1A' },
-  addBtn: {
-    width: 46,
-    height: 46,
-    borderRadius: 12,
-    backgroundColor: COLORS.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  card: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  itemTitle: { color: COLORS.text, fontSize: 15, fontWeight: '700' },
-  qtyBadge: {
-    backgroundColor: COLORS.primarySoft,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  qty: { color: COLORS.primary, fontSize: 14, fontWeight: '800' },
-  sub: { color: COLORS.textMuted, fontSize: 12, marginTop: 5 },
+  addBtn: { width: 46, height: 46, borderRadius: 12, backgroundColor: COLORS.amber, alignItems: 'center', justifyContent: 'center' },
+  filterRow: { flexDirection: 'row', gap: 6 },
+  filterChip: { backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 9 },
+  filterChipActive: { backgroundColor: COLORS.amber, borderColor: COLORS.amber },
+  filterText: { color: COLORS.textMuted, fontSize: 12, fontWeight: '600' },
+  filterTextActive: { color: '#090E1A', fontWeight: '800' },
+  searchRow: { marginTop: 8, gap: 8 },
+  searchBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border, borderRadius: 10, paddingHorizontal: 12 },
+  searchInput: { flex: 1, color: COLORS.text, paddingVertical: 9, fontSize: 13 },
+  catChip: { backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8 },
+  catChipActive: { backgroundColor: COLORS.skySoft, borderColor: COLORS.sky },
+  card: { backgroundColor: COLORS.surface, borderRadius: 15, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: COLORS.border },
+  rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
+  branchTag: { color: COLORS.textDim, fontSize: 10, fontWeight: '800', letterSpacing: 0.6 },
+  statusBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 7 },
+  statusOk: { backgroundColor: COLORS.primarySoft, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 7 },
+  statusLow: { backgroundColor: COLORS.dangerSoft },
+  statusText: { fontSize: 11, fontWeight: '700' },
+  itemTitle: { color: COLORS.text, fontSize: 15, fontWeight: '700', marginBottom: 8 },
+  qtyBox: { flexDirection: 'row', justifyContent: 'space-between', backgroundColor: COLORS.bg, padding: 10, borderRadius: 10, borderWidth: 1, borderColor: COLORS.border, marginBottom: 10 },
+  qtyLabel: { color: COLORS.textDim, fontSize: 10, marginBottom: 2 },
+  qty: { color: COLORS.amber, fontSize: 15, fontWeight: '800' },
+  minVal: { color: COLORS.text, fontSize: 13, fontWeight: '700' },
+  cardActions: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  sub: { color: COLORS.textDim, fontSize: 11 },
+  editBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: COLORS.bg, borderWidth: 1, borderColor: COLORS.borderStrong, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 },
+  editBtnText: { color: COLORS.textMuted, fontSize: 11, fontWeight: '600' },
+  delBtn: { padding: 6 },
   empty: { color: COLORS.textDim, textAlign: 'center', marginTop: 40 },
   modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.72)', justifyContent: 'center', padding: 20 },
-  modalCard: {
-    ...CONTAINER_MAX,
-    maxWidth: 460,
-    backgroundColor: COLORS.surface,
-    borderRadius: 18,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: COLORS.borderStrong,
-  },
+  modalCard: { ...CONTAINER_MAX, maxWidth: 460, backgroundColor: COLORS.surface, borderRadius: 18, padding: 20, borderWidth: 1, borderColor: COLORS.borderStrong },
   modalTitle: { color: COLORS.text, fontSize: 17, fontWeight: '700', marginBottom: 14 },
-  input: {
-    backgroundColor: COLORS.bg,
-    borderWidth: 1,
-    borderColor: COLORS.borderStrong,
-    borderRadius: 10,
-    padding: 12,
-    color: COLORS.text,
-    marginBottom: 10,
-  },
+  input: { backgroundColor: COLORS.bg, borderWidth: 1, borderColor: COLORS.borderStrong, borderRadius: 10, padding: 12, color: COLORS.text, marginBottom: 10 },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 10 },
-  chip: {
-    backgroundColor: COLORS.bg,
-    borderWidth: 1,
-    borderColor: COLORS.borderStrong,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
+  chip: { backgroundColor: COLORS.bg, borderWidth: 1, borderColor: COLORS.borderStrong, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 },
   chipActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
   chipText: { color: COLORS.textMuted, fontSize: 12, fontWeight: '600' },
   modalBtns: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginTop: 4 },

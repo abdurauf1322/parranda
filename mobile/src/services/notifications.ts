@@ -140,15 +140,33 @@ export async function scheduleLocalMilestoneNotifications(milestones: SlesarMile
   }
 }
 
-export async function sendLocalTestNotification() {
-  if (Platform.OS === 'web') return;
+export async function sendLocalTestNotification(customTitle?: string, customBody?: string) {
+  const title = customTitle || '🔔 Uychi Parranda — Signal Testi';
+  const body = customBody || 'Telefoningizda bildirishnoma, ovoz va tebranish to‘liq ishlayapti!';
+  if (Platform.OS === 'web') {
+    try {
+      const AudioCtx = (window as any).AudioContext || (window as any).webkitAudioContext;
+      if (AudioCtx) {
+        const ctx = new AudioCtx();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, ctx.currentTime);
+        gain.gain.setValueAtTime(0.15, ctx.currentTime);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.25);
+      }
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification(title, { body });
+      }
+    } catch {}
+    return;
+  }
   await setupAndroidNotificationChannel();
   await Notifications.scheduleNotificationAsync({
-    content: {
-      title: '🔔 Uychi Parranda — Signal Testi',
-      body: 'Telefoningizda bildirishnoma, ovoz va tebranish to‘liq ishlayapti!',
-      sound: 'default',
-    },
+    content: { title, body, sound: 'default' },
     trigger: null,
   });
 }

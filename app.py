@@ -275,6 +275,25 @@ def create_milestone():
     return jsonify({'success': True, 'milestone': m.to_dict()}), 201
 
 
+@app.route('/api/slesar/milestones/<int:mid>', methods=['DELETE'])
+def delete_milestone(mid):
+    m = SlesarMilestoneModel.query.get(mid)
+    if not m:
+        return jsonify({'error': 'Bosqich topilmadi'}), 404
+    db.session.delete(m)
+    db.session.commit()
+    return jsonify({'success': True})
+
+
+@app.route('/api/slesar/milestones/reset', methods=['POST'])
+def reset_milestones():
+    for m in SlesarMilestoneModel.query.all():
+        m.status = 'kutilmoqda'
+        m.completed_at = None
+    db.session.commit()
+    return jsonify({'success': True})
+
+
 # -------------------------------------------------------------
 # 5. TASKS & 1-5 STARS EVALUATION
 # -------------------------------------------------------------
@@ -398,6 +417,16 @@ def update_inventory_quantity(item_id):
     return jsonify({'success': True, 'item': item.to_dict()})
 
 
+@app.route('/api/inventory/<int:item_id>', methods=['DELETE'])
+def delete_inventory_item(item_id):
+    item = BranchInventoryItemModel.query.get(item_id)
+    if not item:
+        return jsonify({'error': 'Mahsulot topilmadi'}), 404
+    db.session.delete(item)
+    db.session.commit()
+    return jsonify({'success': True})
+
+
 # -------------------------------------------------------------
 # 7. CHICKEN WEIGHTS (PARRANDALAR VAZNI)
 # -------------------------------------------------------------
@@ -431,6 +460,16 @@ def add_weight_record():
     db.session.add(rec)
     db.session.commit()
     return jsonify({'success': True, 'record': rec.to_dict()})
+
+
+@app.route('/api/weights/<int:wid>', methods=['DELETE'])
+def delete_weight_record(wid):
+    rec = ChickenWeightRecordModel.query.get(wid)
+    if not rec:
+        return jsonify({'error': 'Vazn yozuvi topilmadi'}), 404
+    db.session.delete(rec)
+    db.session.commit()
+    return jsonify({'success': True})
 
 
 # -------------------------------------------------------------

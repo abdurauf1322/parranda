@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,11 +9,28 @@ import {
   Modal,
   TextInput,
   Alert,
+  Platform,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { Clock, CheckCircle2, CalendarCheck2, ClipboardList, Edit2, Plus, Bell } from 'lucide-react-native';
+import {
+  Clock,
+  CheckCircle2,
+  CalendarCheck2,
+  ClipboardList,
+  Edit2,
+  Plus,
+  Bell,
+  Camera,
+  CheckSquare,
+  RotateCcw,
+  Trash2,
+  Volume2,
+} from 'lucide-react-native';
 import { api } from '../services/api';
-import { scheduleLocalMilestoneNotifications } from '../services/notifications';
+import {
+  scheduleLocalMilestoneNotifications,
+  sendLocalTestNotification,
+} from '../services/notifications';
 import { useAuth } from '../context/AuthContext';
 import { SlesarMilestone } from '../types';
 import { COLORS, CONTAINER_MAX, CARD_SHADOW } from '../theme';
@@ -22,10 +39,14 @@ export const AsosiyScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const { user } = useAuth();
   const [milestones, setMilestones] = useState<SlesarMilestone[]>([]);
   const [attendanceToday, setAttendanceToday] = useState<string | null>(null);
+  const [pendingTaskCount, setPendingTaskCount] = useState<number>(0);
+  const [clockText, setClockText] = useState<string>(new Date().toTimeString().slice(0, 8));
   const [refreshing, setRefreshing] = useState(false);
 
   const [editingItem, setEditingItem] = useState<SlesarMilestone | null>(null);
   const [editTime, setEditTime] = useState('');
+  const [editTitle, setEditTitle] = useState('');
+  const [editDesc, setEditDesc] = useState('');
 
   const [addOpen, setAddOpen] = useState(false);
   const [newTime, setNewTime] = useState('');
@@ -40,11 +61,19 @@ export const AsosiyScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [repTemp, setRepTemp] = useState('22');
   const [repNotes, setRepNotes] = useState('');
 
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setClockText(new Date().toTimeString().slice(0, 8));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
   const loadData = async () => {
     try {
-      const [mRes, aRes] = await Promise.all([
+      const [mRes, aRes, tRes] = await Promise.all([
         api.get('/api/slesar/milestones'),
         api.get('/api/attendance'),
+        api.get('/api/tasks'),
       ]);
       if (Array.isArray(mRes.data)) {
         setMilestones(mRes.data);
@@ -52,10 +81,14 @@ export const AsosiyScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       }
       if (Array.isArray(aRes.data) && user) {
         const today = new Date().toISOString().slice(0, 10);
-        const mine = aRes.data.find(
-          (a: any) => a.userId === user.id && a.date === today
-        );
+        const mine = aRes.data.find((a: any) => a.userId === user.id && a.date === today);
         setAttendanceToday(mine ? mine.checkInTime?.slice(0, 5) : null);
+      }
+      if (Array.isArray(tRes.data)) {
+        const pending = tRes.data.filter(
+          (t: any) => t.status !== 'bajarildi' && t.status !== 'tasdiqlandi'
+        ).length;
+        setPendingTaskCount(pending);
       }
     } catch (e) {
       console.warn('Ma’lumot yuklashda xatolik:', e);
@@ -82,6 +115,11 @@ export const AsosiyScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     (m) => m.status === 'kutilmoqda' || m.status === 'ogohlantirildi'
   );
 
+  const notify = (title: string, msg: string) => {
+    if (Platform.OS === 'web') window.alert(`${title}\n${msg}`);
+    else Alert.alert(title, msg);
+  };
+
   const handleCheckIn = async () => {
     if (!user) return;
     if (attendanceToday) {
@@ -92,39 +130,87 @@ export const AsosiyScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       const res = await api.post('/api/attendance/check-in', { userId: user.id });
       const checkTime = res.data?.attendance?.checkInTime?.slice(0, 5) || 'Hozir';
       setAttendanceToday(checkTime);
-      Alert.alert('Davomat belgilandi', `Kelgan vaqtingiz: ${checkTime}`);
+      notify('Davomat belgilandi', `Kelgan vaqtingiz: ${checkTime}`);
     } catch {
-      Alert.alert('Xatolik', 'Davomatni belgilab bo‘lmadi');
+      notify('Xatolik', 'Davomatni belgilab bo‘lmadi');
     }
   };
 
   const handleComplete = async (id: number | string) => {
     try {
       await api.post(`/api/slesar/milestones/${id}/complete`, {
-        notes: 'Mobil ilovadan bajarildi',
+        notes: 'Vaqtidan kechikmay bajarildi',
       });
       await loadData();
     } catch {
-      Alert.alert('Xatolik', 'Bosqichni saqlashda muammo yuz berdi');
+      notify('Xatolik', 'Bosqichni saqlashda muammo yuz berdi');
     }
   };
 
-  const handleSaveTime = async () => {
+  const handleSaveEdit = async () => {
     if (!editingItem || !editTime.trim()) return;
     try {
       await api.put(`/api/slesar/milestones/${editingItem.id}`, {
         time: editTime.trim(),
+        title: editTitle.trim() || editingItem.title,
+        description: editDesc.trim(),
       });
       setEditingItem(null);
       await loadData();
     } catch {
-      Alert.alert('Xatolik', 'Vaqtni o‘zgartirib bo‘lmadi');
+      notify('Xatolik', 'Bosqichni o‘zgartirib bo‘lmadi');
     }
+  };
+
+  const handleDeleteMilestone = async (id: number | string) => {
+    const go = async () => {
+      try {
+        await api.delete(`/api/slesar/milestones/${id}`);
+        await loadData();
+      } catch {
+        notify('Xatolik', 'Bosqichni o‘chirib bo‘lmadi');
+      }
+    };
+    if (Platform.OS === 'web') {
+      if (window.confirm('Ushbu bosqichni o‘chirmoqchimisiz?')) go();
+    } else {
+      Alert.alert('O‘chirish', 'Ushbu bosqichni o‘chirmoqchimisiz?', [
+        { text: 'Bekor', style: 'cancel' },
+        { text: 'O‘chirish', style: 'destructive', onPress: go },
+      ]);
+    }
+  };
+
+  const handleResetMilestones = async () => {
+    const go = async () => {
+      try {
+        await api.post('/api/slesar/milestones/reset');
+        await loadData();
+      } catch {
+        notify('Xatolik', 'Grafikni tiklab bo‘lmadi');
+      }
+    };
+    if (Platform.OS === 'web') {
+      if (window.confirm('Barcha bosqichlarni "Kutilmoqda" holatiga qaytarmoqchimisiz?')) go();
+    } else {
+      Alert.alert('Standart holat', 'Barcha bosqichlarni qayta boshlashni xohlaysizmi?', [
+        { text: 'Bekor', style: 'cancel' },
+        { text: 'Ha, tiklash', onPress: go },
+      ]);
+    }
+  };
+
+  const handleTestSignal = async (m?: SlesarMilestone) => {
+    await sendLocalTestNotification(
+      m ? `⏰ Signal: ${m.time} — ${m.title}` : '🔔 Signalni Sinash — Uychi Parranda',
+      m ? m.description || '3 daqiqadan so‘ng bosqich boshlanadi!' : 'Ovozli va push signal tizimi faol!'
+    );
+    notify('Signal yuborildi', m ? `${m.time} — ${m.title}` : 'Test signali chalindi!');
   };
 
   const handleAddMilestone = async () => {
     if (!newTime.trim() || !newTitle.trim()) {
-      Alert.alert('Diqqat', 'Vaqt va bosqich nomini kiriting');
+      notify('Diqqat', 'Vaqt va bosqich nomini kiriting');
       return;
     }
     try {
@@ -139,7 +225,7 @@ export const AsosiyScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       setAddOpen(false);
       await loadData();
     } catch {
-      Alert.alert('Xatolik', 'Yangi bosqich qo‘shilmadi');
+      notify('Xatolik', 'Yangi bosqich qo‘shilmadi');
     }
   };
 
@@ -158,9 +244,9 @@ export const AsosiyScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       setRepFeed('');
       setRepNotes('');
       setReportOpen(false);
-      Alert.alert('Saqlandi', 'Kunlik hisobot serverga yuborildi!');
+      notify('Saqlandi', 'Kunlik hisobot serverga yuborildi!');
     } catch (e: any) {
-      Alert.alert('Xatolik', e?.response?.data?.message || 'Hisobot yuborilmadi');
+      notify('Xatolik', e?.response?.data?.message || 'Hisobot yuborilmadi');
     }
   };
 
@@ -170,33 +256,40 @@ export const AsosiyScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       contentContainerStyle={styles.content}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />}
     >
-      {/* Quick Actions + Progress Bar */}
-      <View style={styles.topActionsRow}>
-        <TouchableOpacity
-          style={[styles.actionCard, attendanceToday ? styles.actionCardSuccess : styles.actionCardWarn]}
-          onPress={handleCheckIn}
-        >
-          <View style={[styles.actionIconBox, { backgroundColor: attendanceToday ? COLORS.primarySoft : COLORS.amberSoft }]}>
-            <CalendarCheck2 size={18} color={attendanceToday ? COLORS.primary : COLORS.amber} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.actionLabel}>Davomat</Text>
-            <Text style={[styles.actionValue, { color: attendanceToday ? COLORS.primary : COLORS.amber }]}>
-              {attendanceToday ? `Kelgan: ${attendanceToday}` : 'Belgilash'}
+      {/* Top Status Pills (Davomat, Kunlik Reja, Foto, Vazifalar) */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+        <View style={styles.pillsRow}>
+          <TouchableOpacity
+            style={[styles.pill, attendanceToday ? styles.pillSuccess : styles.pillWarn]}
+            onPress={handleCheckIn}
+          >
+            <CalendarCheck2 size={14} color={attendanceToday ? COLORS.primary : COLORS.amber} />
+            <Text style={[styles.pillText, { color: attendanceToday ? COLORS.primary : COLORS.amber }]}>
+              {attendanceToday ? `Kelgan: ${attendanceToday}` : 'Davomat belgilanmagan'}
             </Text>
-          </View>
-        </TouchableOpacity>
+          </TouchableOpacity>
 
-        <TouchableOpacity style={styles.actionCard} onPress={() => setReportOpen(true)}>
-          <View style={[styles.actionIconBox, { backgroundColor: COLORS.skySoft }]}>
-            <ClipboardList size={18} color={COLORS.sky} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.actionLabel}>Kunlik Reja</Text>
-            <Text style={[styles.actionValue, { color: COLORS.sky }]}>Hisobot kiritish</Text>
-          </View>
-        </TouchableOpacity>
-      </View>
+          <TouchableOpacity style={styles.pill} onPress={() => setReportOpen(true)}>
+            <ClipboardList size={14} color={COLORS.sky} />
+            <Text style={styles.pillText}>Kunlik Reja</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.pill} onPress={() => navigation.navigate('Koproq')}>
+            <Camera size={14} color={COLORS.purple} />
+            <Text style={styles.pillText}>Foto</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.pill, pendingTaskCount > 0 && styles.pillWarn]}
+            onPress={() => navigation.navigate('Topshiriqlar')}
+          >
+            <CheckSquare size={14} color={COLORS.amber} />
+            <Text style={[styles.pillText, { color: COLORS.amber }]}>
+              Vazifalar: {pendingTaskCount} ›
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
 
       {/* Progress Strip */}
       <View style={styles.progressBox}>
@@ -211,7 +304,7 @@ export const AsosiyScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         </View>
       </View>
 
-      {/* Hero Card: NAVBATDAGI TEXNOLOGIK BOSQICH */}
+      {/* Hero Card */}
       {nextStep ? (
         <View style={[styles.heroCard, CARD_SHADOW]}>
           <View style={styles.heroAccentStrip} />
@@ -219,11 +312,11 @@ export const AsosiyScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             <View style={styles.heroHeader}>
               <View style={styles.heroBadge}>
                 <Clock size={13} color={COLORS.amber} />
-                <Text style={styles.heroBadgeText}>NAVBATDAGI BOSQICH</Text>
+                <Text style={styles.heroBadgeText}>NAVBATDAGI TEXNOLOGIK BOSQICH</Text>
               </View>
               <View style={styles.signalPill}>
                 <Bell size={11} color={COLORS.amber} />
-                <Text style={styles.heroAlertTime}>{nextStep.alertTime}</Text>
+                <Text style={styles.heroAlertTime}>Signal: {nextStep.alertTime} (-3 daq)</Text>
               </View>
             </View>
 
@@ -234,9 +327,7 @@ export const AsosiyScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               <Text style={styles.heroTitle}>{nextStep.title}</Text>
             </View>
 
-            {!!nextStep.description && (
-              <Text style={styles.heroDesc}>{nextStep.description}</Text>
-            )}
+            {!!nextStep.description && <Text style={styles.heroDesc}>{nextStep.description}</Text>}
 
             <View style={styles.heroActions}>
               <TouchableOpacity
@@ -244,16 +335,15 @@ export const AsosiyScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 onPress={() => {
                   setEditingItem(nextStep);
                   setEditTime(nextStep.time);
+                  setEditTitle(nextStep.title);
+                  setEditDesc(nextStep.description || '');
                 }}
               >
                 <Edit2 size={15} color={COLORS.textMuted} />
-                <Text style={styles.editTimeText}>Vaqt</Text>
+                <Text style={styles.editTimeText}>O‘zgartirish</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity
-                style={styles.completeBtn}
-                onPress={() => handleComplete(nextStep.id)}
-              >
+              <TouchableOpacity style={styles.completeBtn} onPress={() => handleComplete(nextStep.id)}>
                 <CheckCircle2 size={20} color="#090E1A" strokeWidth={2.5} />
                 <Text style={styles.completeBtnText}>Bajarildi</Text>
               </TouchableOpacity>
@@ -264,72 +354,129 @@ export const AsosiyScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         <View style={[styles.heroCard, { borderColor: COLORS.primary }]}>
           <View style={[styles.heroAccentStrip, { backgroundColor: COLORS.primary }]} />
           <View style={styles.heroBody}>
-            <Text style={[styles.heroTitle, { color: COLORS.primary }]}>
-              Barcha bosqichlar bajarildi!
-            </Text>
+            <Text style={[styles.heroTitle, { color: COLORS.primary }]}>Barcha bosqichlar bajarildi!</Text>
             <Text style={styles.heroDesc}>Bugungi texnologik grafik to‘liq yakunlandi.</Text>
           </View>
         </View>
       )}
 
-      {/* Milestones List Header */}
-      <View style={styles.sectionHeaderRow}>
-        <Text style={styles.sectionTitle}>TEXNOLOGIK ISH GRAFIGI ({milestones.length})</Text>
-        <TouchableOpacity style={styles.addStepBtn} onPress={() => setAddOpen(true)}>
-          <Plus size={14} color="#090E1A" strokeWidth={2.5} />
-          <Text style={styles.addStepText}>Bosqich</Text>
-        </TouchableOpacity>
+      {/* Milestones Header + Bosqich Qo'shish + Signalni Sinash + Standart + Clock */}
+      <View style={styles.sectionHeaderWrap}>
+        <Text style={styles.sectionTitle}>TEXNOLOGIK ISH GRAFIGI ({milestones.length} TA BOSQICH)</Text>
+        <View style={styles.toolbarRow}>
+          <TouchableOpacity style={styles.addStepBtn} onPress={() => setAddOpen(true)}>
+            <Plus size={14} color="#090E1A" strokeWidth={2.5} />
+            <Text style={styles.addStepText}>Bosqich Qo‘shish</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.toolBtn} onPress={() => handleTestSignal()}>
+            <Bell size={13} color={COLORS.textMuted} />
+            <Text style={styles.toolBtnText}>Signalni Sinash</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.toolBtn} onPress={handleResetMilestones}>
+            <RotateCcw size={13} color={COLORS.textMuted} />
+            <Text style={styles.toolBtnText}>Standart</Text>
+          </TouchableOpacity>
+
+          <Text style={styles.clockText}>{clockText}</Text>
+        </View>
       </View>
 
-      {milestones.map((m) => {
+      {milestones.map((m, idx) => {
         const done = m.status === 'bajarildi';
         const isNext = nextStep?.id === m.id;
         return (
           <View
             key={String(m.id)}
-            style={[
-              styles.stepRow,
-              done && styles.stepRowDone,
-              isNext && styles.stepRowActive,
-            ]}
+            style={[styles.stepCard, done && styles.stepRowDone, isNext && styles.stepRowActive]}
           >
-            <View style={[styles.stepTimeBox, isNext && styles.stepTimeBoxActive]}>
-              <Text style={[styles.stepTime, done && { color: COLORS.textDim }]}>{m.time}</Text>
-            </View>
-            <View style={styles.stepInfo}>
-              <Text style={[styles.stepTitle, done && styles.stepTitleDone]}>{m.title}</Text>
-              {!!m.description && <Text style={styles.stepDesc}>{m.description}</Text>}
-            </View>
-            {done ? (
-              <View style={styles.doneIconWrap}>
-                <CheckCircle2 size={18} color={COLORS.primary} />
+            <View style={styles.stepTopRow}>
+              <View style={styles.indexCircle}>
+                <Text style={styles.indexText}>{idx + 1}</Text>
               </View>
-            ) : (
-              <TouchableOpacity style={styles.miniDoneBtn} onPress={() => handleComplete(m.id)}>
-                <Text style={styles.miniDoneText}>Bajarildi</Text>
-              </TouchableOpacity>
+              <Text style={[styles.stepTime, done && { color: COLORS.textDim }]}>{m.time}</Text>
+              <View style={styles.alertMiniPill}>
+                <Text style={styles.alertMiniText}>Ogohlantirish: {m.alertTime} (-3 daqiqa)</Text>
+              </View>
+            </View>
+
+            <Text style={[styles.stepTitle, done && styles.stepTitleDone]}>{m.title}</Text>
+            {!!m.description && <Text style={styles.stepDesc}>{m.description}</Text>}
+            {done && !!m.notes && (
+              <Text style={styles.doneNoteText}>✓ Izoh: {m.notes}</Text>
             )}
+
+            <View style={styles.stepBtnRow}>
+              <TouchableOpacity
+                style={styles.rowActionBtn}
+                onPress={() => {
+                  setEditingItem(m);
+                  setEditTime(m.time);
+                  setEditTitle(m.title);
+                  setEditDesc(m.description || '');
+                }}
+              >
+                <Edit2 size={12} color={COLORS.textMuted} />
+                <Text style={styles.rowActionText}>Vaqtni o‘zgartirish</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.rowActionBtn} onPress={() => handleTestSignal(m)}>
+                <Volume2 size={12} color={COLORS.amber} />
+                <Text style={[styles.rowActionText, { color: COLORS.amber }]}>Signal</Text>
+              </TouchableOpacity>
+
+              {!done ? (
+                <TouchableOpacity style={styles.miniDoneBtn} onPress={() => handleComplete(m.id)}>
+                  <CheckCircle2 size={12} color="#090E1A" />
+                  <Text style={styles.miniDoneText}>Bajarildi</Text>
+                </TouchableOpacity>
+              ) : (
+                <View style={styles.donePill}>
+                  <CheckCircle2 size={12} color={COLORS.primary} />
+                  <Text style={{ color: COLORS.primary, fontSize: 11, fontWeight: '700' }}>Bajarildi</Text>
+                </View>
+              )}
+
+              <TouchableOpacity style={styles.delBtn} onPress={() => handleDeleteMilestone(m.id)}>
+                <Trash2 size={14} color={COLORS.danger} />
+              </TouchableOpacity>
+            </View>
           </View>
         );
       })}
 
-      {/* Modals */}
+      {/* Edit Milestone Modal */}
       <Modal visible={!!editingItem} transparent animationType="fade">
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Bosqich vaqtini o‘zgartirish</Text>
+            <Text style={styles.modalTitle}>Bosqichni O‘zgartirish</Text>
             <TextInput
               style={styles.modalInput}
               value={editTime}
               onChangeText={setEditTime}
-              placeholder="Masalan: 07:30"
+              placeholder="Vaqt (masalan: 07:30)"
+              placeholderTextColor={COLORS.textDim}
+            />
+            <TextInput
+              style={styles.modalInput}
+              value={editTitle}
+              onChangeText={setEditTitle}
+              placeholder="Bosqich nomi"
+              placeholderTextColor={COLORS.textDim}
+            />
+            <TextInput
+              style={styles.modalInput}
+              value={editDesc}
+              onChangeText={setEditDesc}
+              placeholder="Izoh"
               placeholderTextColor={COLORS.textDim}
             />
             <View style={styles.modalBtns}>
               <TouchableOpacity style={styles.cancelBtn} onPress={() => setEditingItem(null)}>
                 <Text style={styles.cancelBtnText}>Bekor qilish</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.saveBtn} onPress={handleSaveTime}>
+              <TouchableOpacity style={styles.saveBtn} onPress={handleSaveEdit}>
                 <Text style={styles.saveBtnText}>Saqlash</Text>
               </TouchableOpacity>
             </View>
@@ -337,6 +484,7 @@ export const AsosiyScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         </View>
       </Modal>
 
+      {/* Add Milestone Modal */}
       <Modal visible={addOpen} transparent animationType="slide">
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
@@ -374,6 +522,7 @@ export const AsosiyScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         </View>
       </Modal>
 
+      {/* Daily Report Modal */}
       <Modal visible={reportOpen} transparent animationType="slide">
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
@@ -444,46 +593,33 @@ export const AsosiyScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.bg },
   content: { ...CONTAINER_MAX, padding: 16, paddingBottom: 36 },
-  topActionsRow: { flexDirection: 'row', gap: 10, marginBottom: 12 },
-  actionCard: {
-    flex: 1,
+  pillsRow: { flexDirection: 'row', gap: 8 },
+  pill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 6,
     backgroundColor: COLORS.surface,
     borderWidth: 1,
     borderColor: COLORS.border,
-    padding: 12,
-    borderRadius: 14,
-  },
-  actionCardSuccess: { borderColor: 'rgba(34,197,94,0.35)' },
-  actionCardWarn: { borderColor: 'rgba(245,158,11,0.35)' },
-  actionIconBox: {
-    width: 36,
-    height: 36,
+    paddingHorizontal: 11,
+    paddingVertical: 8,
     borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
-  actionLabel: { color: COLORS.textMuted, fontSize: 11, fontWeight: '600' },
-  actionValue: { fontSize: 13, fontWeight: '700', marginTop: 1 },
+  pillSuccess: { borderColor: 'rgba(34,197,94,0.4)', backgroundColor: COLORS.primarySoft },
+  pillWarn: { borderColor: 'rgba(245,158,11,0.4)', backgroundColor: COLORS.amberSoft },
+  pillText: { color: COLORS.text, fontSize: 12, fontWeight: '700' },
   progressBox: {
     backgroundColor: COLORS.surface,
     borderWidth: 1,
     borderColor: COLORS.border,
     borderRadius: 12,
     padding: 12,
-    marginBottom: 16,
+    marginBottom: 14,
   },
-  progressHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
+  progressHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 7 },
   progressLabel: { color: COLORS.textMuted, fontSize: 12, fontWeight: '600' },
   progressPct: { color: COLORS.primary, fontSize: 12, fontWeight: '800' },
-  progressTrack: {
-    height: 6,
-    backgroundColor: COLORS.surfaceAlt,
-    borderRadius: 4,
-    overflow: 'hidden',
-  },
+  progressTrack: { height: 6, backgroundColor: COLORS.surfaceAlt, borderRadius: 4, overflow: 'hidden' },
   progressFill: { height: '100%', backgroundColor: COLORS.primary, borderRadius: 4 },
   heroCard: {
     flexDirection: 'row',
@@ -491,38 +627,18 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     borderWidth: 1,
     borderColor: 'rgba(245, 158, 11, 0.45)',
-    marginBottom: 22,
+    marginBottom: 20,
     overflow: 'hidden',
   },
   heroAccentStrip: { width: 5, backgroundColor: COLORS.amber },
   heroBody: { flex: 1, padding: 16 },
-  heroHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
+  heroHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginBottom: 10 },
   heroBadge: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  heroBadgeText: { color: COLORS.amber, fontSize: 11, fontWeight: '800', letterSpacing: 0.7 },
-  signalPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: COLORS.amberSoft,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
-  },
+  heroBadgeText: { color: COLORS.amber, fontSize: 11, fontWeight: '800', letterSpacing: 0.6 },
+  signalPill: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: COLORS.amberSoft, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
   heroAlertTime: { color: COLORS.amber, fontSize: 11, fontWeight: '700' },
   heroTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 6 },
-  heroTimeTag: {
-    backgroundColor: COLORS.amberSoft,
-    borderWidth: 1,
-    borderColor: 'rgba(245,158,11,0.35)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
+  heroTimeTag: { backgroundColor: COLORS.amberSoft, borderWidth: 1, borderColor: 'rgba(245,158,11,0.35)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
   heroTimeText: { color: COLORS.amber, fontSize: 15, fontWeight: '800' },
   heroTitle: { flex: 1, color: COLORS.text, fontSize: 17, fontWeight: '800' },
   heroDesc: { color: COLORS.textMuted, fontSize: 13, marginBottom: 14 },
@@ -551,19 +667,73 @@ const styles = StyleSheet.create({
     height: 46,
   },
   completeBtnText: { color: '#090E1A', fontWeight: '800', fontSize: 15 },
-  sectionHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  sectionTitle: {
-    color: COLORS.textMuted,
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 0.9,
-  },
+  sectionHeaderWrap: { marginBottom: 12, gap: 8 },
+  sectionTitle: { color: COLORS.textMuted, fontSize: 11, fontWeight: '800', letterSpacing: 0.9 },
+  toolbarRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 },
   addStepBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: COLORS.amber,
+    paddingHorizontal: 11,
+    paddingVertical: 7,
+    borderRadius: 9,
+  },
+  addStepText: { color: '#090E1A', fontWeight: '800', fontSize: 12 },
+  toolBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.borderStrong,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 9,
+  },
+  toolBtnText: { color: COLORS.textMuted, fontSize: 12, fontWeight: '600' },
+  clockText: { color: COLORS.amber, fontSize: 12, fontWeight: '800', marginLeft: 'auto' },
+  stepCard: {
+    backgroundColor: COLORS.surface,
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  stepRowActive: { borderColor: 'rgba(245, 158, 11, 0.45)', backgroundColor: COLORS.surfaceAlt },
+  stepRowDone: { opacity: 0.78 },
+  stepTopRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' },
+  indexCircle: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    backgroundColor: COLORS.surfaceAlt,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  indexText: { color: COLORS.textMuted, fontSize: 11, fontWeight: '700' },
+  stepTime: { color: COLORS.amber, fontWeight: '800', fontSize: 14 },
+  alertMiniPill: { backgroundColor: COLORS.amberSoft, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 },
+  alertMiniText: { color: COLORS.amber, fontSize: 10, fontWeight: '700' },
+  stepTitle: { color: COLORS.text, fontSize: 14, fontWeight: '700' },
+  stepTitleDone: { color: COLORS.textMuted },
+  stepDesc: { color: COLORS.textDim, fontSize: 12, marginTop: 3 },
+  doneNoteText: { color: COLORS.primary, fontSize: 11, marginTop: 4, fontWeight: '600' },
+  stepBtnRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginTop: 10 },
+  rowActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: COLORS.bg,
+    borderWidth: 1,
+    borderColor: COLORS.borderStrong,
+    paddingHorizontal: 9,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  rowActionText: { color: COLORS.textMuted, fontSize: 11, fontWeight: '600' },
+  miniDoneBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
@@ -572,60 +742,21 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 8,
   },
-  addStepText: { color: '#090E1A', fontWeight: '800', fontSize: 12 },
-  stepRow: {
+  miniDoneText: { color: '#090E1A', fontSize: 11, fontWeight: '800' },
+  donePill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.surface,
-    borderRadius: 14,
-    padding: 13,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    gap: 12,
-  },
-  stepRowActive: {
-    borderColor: 'rgba(245, 158, 11, 0.4)',
-    backgroundColor: COLORS.surfaceAlt,
-  },
-  stepRowDone: { opacity: 0.55 },
-  stepTimeBox: {
-    backgroundColor: COLORS.bg,
+    gap: 4,
+    backgroundColor: COLORS.primarySoft,
     paddingHorizontal: 9,
     paddingVertical: 6,
     borderRadius: 8,
-    borderWidth: 1,
-    borderColor: COLORS.border,
   },
-  stepTimeBoxActive: { borderColor: 'rgba(245,158,11,0.4)' },
-  stepTime: { color: COLORS.amber, fontWeight: '800', fontSize: 13 },
-  stepInfo: { flex: 1 },
-  stepTitle: { color: COLORS.text, fontSize: 14, fontWeight: '600' },
-  stepTitleDone: { textDecorationLine: 'line-through', color: COLORS.textMuted },
-  stepDesc: { color: COLORS.textDim, fontSize: 12, marginTop: 2 },
-  doneIconWrap: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: COLORS.primarySoft,
-    alignItems: 'center',
-    justifyContent: 'center',
+  delBtn: {
+    padding: 6,
+    marginLeft: 'auto',
   },
-  miniDoneBtn: {
-    backgroundColor: COLORS.primarySoft,
-    borderWidth: 1,
-    borderColor: COLORS.primary,
-    paddingHorizontal: 11,
-    paddingVertical: 7,
-    borderRadius: 9,
-  },
-  miniDoneText: { color: COLORS.primary, fontSize: 12, fontWeight: '700' },
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.72)',
-    justifyContent: 'center',
-    padding: 20,
-  },
+  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.72)', justifyContent: 'center', padding: 20 },
   modalCard: {
     ...CONTAINER_MAX,
     maxWidth: 460,
@@ -649,11 +780,6 @@ const styles = StyleSheet.create({
   modalBtns: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginTop: 6 },
   cancelBtn: { paddingHorizontal: 16, paddingVertical: 10 },
   cancelBtnText: { color: COLORS.textMuted, fontWeight: '600' },
-  saveBtn: {
-    backgroundColor: COLORS.primary,
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 10,
-  },
+  saveBtn: { backgroundColor: COLORS.primary, paddingHorizontal: 18, paddingVertical: 10, borderRadius: 10 },
   saveBtnText: { color: '#090E1A', fontWeight: '800' },
 });

@@ -3,6 +3,7 @@ import {
   View,
   Text,
   FlatList,
+  ScrollView,
   TouchableOpacity,
   StyleSheet,
   RefreshControl,
@@ -20,12 +21,14 @@ import { COLORS, CONTAINER_MAX, CARD_SHADOW } from '../theme';
 export const TopshiriqlarScreen: React.FC = () => {
   const { user } = useAuth();
   const [tasks, setTasks] = useState<TaskItem[]>([]);
-  const [filter, setFilter] = useState<'all' | 'pending' | 'done'>('all');
+  const [filter, setFilter] = useState<'all' | 'pending' | 'done' | 'rated'>('all');
+  const [roleFilter, setRoleFilter] = useState<string>('all');
   const [refreshing, setRefreshing] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [title, setTitle] = useState('');
   const [desc, setDesc] = useState('');
   const [building, setBuilding] = useState('1-Bino');
+  const [dueTime, setDueTime] = useState('12:00');
   const [role, setRole] = useState('slesar');
 
   const [evalTask, setEvalTask] = useState<TaskItem | null>(null);
@@ -76,6 +79,7 @@ export const TopshiriqlarScreen: React.FC = () => {
         assignedByName: user?.fullName || 'Mobil ilova',
         assignedByRole: user?.role || 'ish_boshqaruvchi',
         building: building.trim() || '1-Bino',
+        dueTime: dueTime.trim() || '12:00',
         priority: 'yuqori',
       });
       setTitle('');
@@ -104,9 +108,11 @@ export const TopshiriqlarScreen: React.FC = () => {
   };
 
   const filtered = tasks.filter((t) => {
+    if (roleFilter !== 'all' && t.assignedToRole !== roleFilter) return false;
     const isDone = t.status === 'bajarildi' || t.status === 'tasdiqlandi';
     if (filter === 'pending') return !isDone;
-    if (filter === 'done') return isDone;
+    if (filter === 'done') return t.status === 'bajarildi';
+    if (filter === 'rated') return t.status === 'tasdiqlandi';
     return true;
   });
 
@@ -121,23 +127,42 @@ export const TopshiriqlarScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
 
-        <View style={styles.filterRow}>
-          {[
-            { id: 'all', label: 'Hammasi' },
-            { id: 'pending', label: 'Faol' },
-            { id: 'done', label: 'Bajarilgan' },
-          ].map((f) => (
-            <TouchableOpacity
-              key={f.id}
-              style={[styles.filterChip, filter === f.id && styles.filterChipActive]}
-              onPress={() => setFilter(f.id as any)}
-            >
-              <Text style={[styles.filterText, filter === f.id && styles.filterTextActive]}>
-                {f.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 6 }}>
+          <View style={styles.filterRow}>
+            {[
+              { id: 'all', label: 'Hammasi' },
+              { id: 'pending', label: 'Faol' },
+              { id: 'done', label: 'Bajarilgan' },
+              { id: 'rated', label: 'Tasdiqlangan' },
+            ].map((f) => (
+              <TouchableOpacity
+                key={f.id}
+                style={[styles.filterChip, filter === f.id && styles.filterChipActive]}
+                onPress={() => setFilter(f.id as any)}
+              >
+                <Text style={[styles.filterText, filter === f.id && styles.filterTextActive]}>
+                  {f.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </ScrollView>
+
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 4 }}>
+          <View style={styles.filterRow}>
+            {['all', 'slesar', 'elektrik', 'veterinar', 'ish_boshqaruvchi', 'qorovul'].map((r) => (
+              <TouchableOpacity
+                key={r}
+                style={[styles.roleFilterChip, roleFilter === r && styles.roleFilterActive]}
+                onPress={() => setRoleFilter(r)}
+              >
+                <Text style={[styles.filterText, roleFilter === r && { color: COLORS.sky, fontWeight: '700' }]}>
+                  {r === 'all' ? 'Barcha lavozimlar' : ROLE_LABELS[r] || r}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </ScrollView>
       </View>
 
       <FlatList
@@ -167,10 +192,13 @@ export const TopshiriqlarScreen: React.FC = () => {
                 {rated ? (
                   <View style={styles.starBadge}>
                     <Star size={13} color={COLORS.amber} fill={COLORS.amber} />
-                    <Text style={styles.starText}>{item.evaluationScore || 5}/5</Text>
+                    <Text style={styles.starText}>Tasdiqlangan ({item.evaluationScore || 5}/5)</Text>
                   </View>
                 ) : done ? (
-                  <CheckCircle2 size={18} color={COLORS.primary} />
+                  <View style={styles.doneBadge}>
+                    <CheckCircle2 size={13} color={COLORS.primary} />
+                    <Text style={styles.doneBadgeText}>Bajarildi</Text>
+                  </View>
                 ) : (
                   <Clock size={16} color={COLORS.amber} />
                 )}
@@ -178,7 +206,32 @@ export const TopshiriqlarScreen: React.FC = () => {
 
               <Text style={[styles.cardTitle, done && { color: COLORS.textMuted }]}>{item.title}</Text>
               {!!item.description && <Text style={styles.cardDesc}>{item.description}</Text>}
-              <Text style={styles.metaText}>Beruvchi: {item.assignedByName || 'Rahbar'}</Text>
+
+              <View style={styles.metaBox}>
+                <View style={styles.metaLine}>
+                  <Text style={styles.metaKey}>Topshiriq berdi:</Text>
+                  <Text style={styles.metaVal}>{item.assignedByName || 'Rahbar'}</Text>
+                </View>
+                <View style={styles.metaLine}>
+                  <Text style={styles.metaKey}>Bajaruvchi:</Text>
+                  <Text style={styles.metaVal}>{item.assignedToName || ROLE_LABELS[item.assignedToRole] || item.assignedToRole}</Text>
+                </View>
+                {!!item.dueTime && (
+                  <View style={styles.metaLine}>
+                    <Text style={styles.metaKey}>Muddat:</Text>
+                    <Text style={[styles.metaVal, { color: COLORS.amber }]}>{item.dueTime}</Text>
+                  </View>
+                )}
+              </View>
+
+              {rated && (
+                <View style={styles.ratedBox}>
+                  <Text style={styles.ratedTitle}>⭐ Baholandi: {item.evaluationScore || 5} / 5 yulduz</Text>
+                  {!!item.evaluationNote && (
+                    <Text style={styles.ratedNote}>"{item.evaluationNote}"</Text>
+                  )}
+                </View>
+              )}
 
               {!done && (
                 <TouchableOpacity style={styles.doneBtn} onPress={() => handleComplete(item.id)}>
@@ -204,7 +257,7 @@ export const TopshiriqlarScreen: React.FC = () => {
         ListEmptyComponent={<Text style={styles.empty}>Topshiriqlar topilmadi</Text>}
       />
 
-      {/* Modals */}
+      {/* Create Task Modal */}
       <Modal visible={modalOpen} transparent animationType="slide">
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
@@ -217,20 +270,29 @@ export const TopshiriqlarScreen: React.FC = () => {
               onChangeText={setTitle}
             />
             <TextInput
-              style={[styles.input, { height: 75 }]}
+              style={[styles.input, { height: 70 }]}
               placeholder="Tavsif (ixtiyoriy)"
               placeholderTextColor={COLORS.textDim}
               multiline
               value={desc}
               onChangeText={setDesc}
             />
-            <TextInput
-              style={styles.input}
-              placeholder="Bino (masalan: 1-Bino)"
-              placeholderTextColor={COLORS.textDim}
-              value={building}
-              onChangeText={setBuilding}
-            />
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <TextInput
+                style={[styles.input, { flex: 1 }]}
+                placeholder="Bino (1-Bino)"
+                placeholderTextColor={COLORS.textDim}
+                value={building}
+                onChangeText={setBuilding}
+              />
+              <TextInput
+                style={[styles.input, { width: 100 }]}
+                placeholder="Muddat (12:00)"
+                placeholderTextColor={COLORS.textDim}
+                value={dueTime}
+                onChangeText={setDueTime}
+              />
+            </View>
             <Text style={styles.label}>Kimga biriktiriladi:</Text>
             <View style={styles.rolesWrap}>
               {['slesar', 'veterinar', 'elektrik', 'ish_boshqaruvchi', 'qorovul'].map((r) => (
@@ -257,6 +319,7 @@ export const TopshiriqlarScreen: React.FC = () => {
         </View>
       </Modal>
 
+      {/* Evaluate Task Modal */}
       <Modal visible={!!evalTask} transparent animationType="fade">
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
@@ -264,17 +327,13 @@ export const TopshiriqlarScreen: React.FC = () => {
             <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 10, marginBottom: 14 }}>
               {[1, 2, 3, 4, 5].map((s) => (
                 <TouchableOpacity key={s} onPress={() => setScore(s)}>
-                  <Star
-                    size={30}
-                    color={COLORS.amber}
-                    fill={s <= score ? COLORS.amber : 'transparent'}
-                  />
+                  <Star size={30} color={COLORS.amber} fill={s <= score ? COLORS.amber : 'transparent'} />
                 </TouchableOpacity>
               ))}
             </View>
             <TextInput
               style={styles.input}
-              placeholder="Izoh (ixtiyoriy)"
+              placeholder="Izoh (masalan: Sifatli va o‘z vaqtida bajarildi)"
               placeholderTextColor={COLORS.textDim}
               value={evalNote}
               onChangeText={setEvalNote}
@@ -297,119 +356,50 @@ export const TopshiriqlarScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.bg },
   topWrap: { ...CONTAINER_MAX, paddingHorizontal: 16, paddingTop: 14 },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
   headerTitle: { color: COLORS.text, fontSize: 18, fontWeight: '800' },
-  addBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: COLORS.primary,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
-  },
+  addBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: COLORS.primary, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10 },
   addBtnText: { color: '#090E1A', fontWeight: '800', fontSize: 13 },
-  filterRow: { flexDirection: 'row', gap: 8, marginBottom: 4 },
-  filterChip: {
-    backgroundColor: COLORS.surface,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 9,
-  },
+  filterRow: { flexDirection: 'row', gap: 6 },
+  filterChip: { backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border, paddingHorizontal: 11, paddingVertical: 6, borderRadius: 9 },
   filterChipActive: { backgroundColor: COLORS.primarySoft, borderColor: COLORS.primary },
+  roleFilterChip: { backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8 },
+  roleFilterActive: { backgroundColor: COLORS.skySoft, borderColor: COLORS.sky },
   filterText: { color: COLORS.textMuted, fontSize: 12, fontWeight: '600' },
   filterTextActive: { color: COLORS.primary, fontWeight: '700' },
-  card: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 15,
-    padding: 15,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  cardDone: { opacity: 0.72 },
+  card: { backgroundColor: COLORS.surface, borderRadius: 15, padding: 15, marginBottom: 10, borderWidth: 1, borderColor: COLORS.border },
+  cardDone: { opacity: 0.84 },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   badgesRow: { flexDirection: 'row', gap: 6 },
-  roleTag: {
-    backgroundColor: COLORS.skySoft,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
+  roleTag: { backgroundColor: COLORS.skySoft, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
   roleTagText: { color: COLORS.sky, fontSize: 11, fontWeight: '700' },
-  bldgTag: {
-    backgroundColor: COLORS.surfaceAlt,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
+  bldgTag: { backgroundColor: COLORS.surfaceAlt, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
   bldgTagText: { color: COLORS.textMuted, fontSize: 11, fontWeight: '600' },
   starBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: COLORS.amberSoft, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
-  starText: { color: COLORS.amber, fontWeight: '700', fontSize: 12 },
+  starText: { color: COLORS.amber, fontWeight: '700', fontSize: 11 },
+  doneBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: COLORS.primarySoft, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
+  doneBadgeText: { color: COLORS.primary, fontWeight: '700', fontSize: 11 },
   cardTitle: { color: COLORS.text, fontSize: 15, fontWeight: '700', marginBottom: 4 },
   cardDesc: { color: COLORS.textMuted, fontSize: 13, marginBottom: 8 },
-  metaText: { color: COLORS.textDim, fontSize: 11, marginBottom: 8 },
-  doneBtn: {
-    backgroundColor: COLORS.primarySoft,
-    borderWidth: 1,
-    borderColor: COLORS.primary,
-    borderRadius: 10,
-    paddingVertical: 10,
-    alignItems: 'center',
-    marginTop: 4,
-  },
+  metaBox: { backgroundColor: COLORS.bg, borderRadius: 10, padding: 10, gap: 4, marginBottom: 8, borderWidth: 1, borderColor: COLORS.border },
+  metaLine: { flexDirection: 'row', justifyContent: 'space-between' },
+  metaKey: { color: COLORS.textDim, fontSize: 11 },
+  metaVal: { color: COLORS.text, fontSize: 11, fontWeight: '600' },
+  ratedBox: { backgroundColor: COLORS.amberSoft, borderWidth: 1, borderColor: 'rgba(245,158,11,0.3)', borderRadius: 9, padding: 9, marginTop: 2 },
+  ratedTitle: { color: COLORS.amber, fontSize: 12, fontWeight: '700' },
+  ratedNote: { color: COLORS.textMuted, fontSize: 11, fontStyle: 'italic', marginTop: 2 },
+  doneBtn: { backgroundColor: COLORS.primarySoft, borderWidth: 1, borderColor: COLORS.primary, borderRadius: 10, paddingVertical: 10, alignItems: 'center', marginTop: 4 },
   doneBtnText: { color: COLORS.primary, fontWeight: '700', fontSize: 13 },
-  evalBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    backgroundColor: COLORS.amberSoft,
-    borderWidth: 1,
-    borderColor: COLORS.amber,
-    borderRadius: 10,
-    paddingVertical: 9,
-    marginTop: 4,
-  },
+  evalBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: COLORS.amberSoft, borderWidth: 1, borderColor: COLORS.amber, borderRadius: 10, paddingVertical: 9, marginTop: 4 },
   evalBtnText: { color: COLORS.amber, fontWeight: '700', fontSize: 12 },
   empty: { color: COLORS.textDim, textAlign: 'center', marginTop: 40 },
   modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.72)', justifyContent: 'center', padding: 20 },
-  modalCard: {
-    ...CONTAINER_MAX,
-    maxWidth: 460,
-    backgroundColor: COLORS.surface,
-    borderRadius: 18,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: COLORS.borderStrong,
-  },
+  modalCard: { ...CONTAINER_MAX, maxWidth: 460, backgroundColor: COLORS.surface, borderRadius: 18, padding: 20, borderWidth: 1, borderColor: COLORS.borderStrong },
   modalTitle: { color: COLORS.text, fontSize: 18, fontWeight: '700', marginBottom: 14 },
-  input: {
-    backgroundColor: COLORS.bg,
-    borderWidth: 1,
-    borderColor: COLORS.borderStrong,
-    borderRadius: 10,
-    padding: 12,
-    color: COLORS.text,
-    marginBottom: 10,
-  },
+  input: { backgroundColor: COLORS.bg, borderWidth: 1, borderColor: COLORS.borderStrong, borderRadius: 10, padding: 12, color: COLORS.text, marginBottom: 10 },
   label: { color: COLORS.textMuted, fontSize: 12, marginBottom: 8 },
   rolesWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
-  roleChip: {
-    backgroundColor: COLORS.bg,
-    borderWidth: 1,
-    borderColor: COLORS.borderStrong,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
+  roleChip: { backgroundColor: COLORS.bg, borderWidth: 1, borderColor: COLORS.borderStrong, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 },
   roleChipActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
   roleChipText: { color: COLORS.textMuted, fontSize: 12, fontWeight: '600' },
   modalBtns: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10 },
