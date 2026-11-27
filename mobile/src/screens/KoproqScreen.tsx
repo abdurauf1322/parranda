@@ -9,6 +9,7 @@ import {
   TextInput,
   Image,
   Modal,
+  Platform,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useFocusEffect } from '@react-navigation/native';
@@ -33,6 +34,7 @@ import {
   BranchInfo,
   ROLE_LABELS,
 } from '../types';
+import { COLORS, CONTAINER_MAX, CARD_SHADOW } from '../theme';
 
 export const KoproqScreen: React.FC = () => {
   const { user, logout } = useAuth();
@@ -43,7 +45,6 @@ export const KoproqScreen: React.FC = () => {
   const [branches, setBranches] = useState<BranchInfo[]>([]);
   const [noteText, setNoteText] = useState('');
 
-  // Change password modal
   const [pwModal, setPwModal] = useState(false);
   const [oldPw, setOldPw] = useState('');
   const [newPw, setNewPw] = useState('');
@@ -175,12 +176,29 @@ export const KoproqScreen: React.FC = () => {
     }
   };
 
+  const handleLogout = () => {
+    if (Platform.OS === 'web') {
+      if (window.confirm('Tizimdan chiqishni xohlaysizmi?')) logout();
+      return;
+    }
+    logout();
+  };
+
+  const initials = (user?.fullName || 'U')
+    .split(' ')
+    .slice(0, 2)
+    .map((s) => s[0])
+    .join('')
+    .toUpperCase();
+
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
+    <ScrollView style={styles.container} contentContainerStyle={[CONTAINER_MAX, { padding: 16, paddingBottom: 36 }]}>
       {/* Foto-Hisobot (Kamera + Galereya) */}
       <View style={styles.photoBtnRow}>
-        <TouchableOpacity style={[styles.photoCard, { flex: 1 }]} onPress={handleCameraUpload}>
-          <Camera size={22} color="#0F172A" />
+        <TouchableOpacity style={[styles.photoCard, CARD_SHADOW, { flex: 1 }]} onPress={handleCameraUpload}>
+          <View style={styles.photoIconWrap}>
+            <Camera size={20} color="#090E1A" />
+          </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.photoTitle}>Kamera</Text>
             <Text style={styles.photoSub}>Suratga olish</Text>
@@ -188,10 +206,12 @@ export const KoproqScreen: React.FC = () => {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.photoCard, { flex: 1, backgroundColor: '#38BDF8' }]}
+          style={[styles.photoCard, CARD_SHADOW, { flex: 1, backgroundColor: COLORS.sky }]}
           onPress={handleGalleryUpload}
         >
-          <ImageIcon size={22} color="#0F172A" />
+          <View style={styles.photoIconWrap}>
+            <ImageIcon size={20} color="#090E1A" />
+          </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.photoTitle}>Galereya</Text>
             <Text style={styles.photoSub}>Rasm tanlash</Text>
@@ -201,9 +221,9 @@ export const KoproqScreen: React.FC = () => {
 
       {/* Oxirgi Foto-Hisobotlar */}
       {photos.length > 0 && (
-        <View style={styles.section}>
+        <View style={[styles.section, CARD_SHADOW]}>
           <View style={styles.secHeader}>
-            <ImageIcon size={16} color="#38BDF8" />
+            <ImageIcon size={16} color={COLORS.sky} />
             <Text style={styles.secTitle}>OXIRGI FOTO-HISOBOTLAR ({photos.length})</Text>
           </View>
           {photos.map((p) => (
@@ -221,10 +241,10 @@ export const KoproqScreen: React.FC = () => {
       )}
 
       {/* Davomat Jurnali + Check-in */}
-      <View style={styles.section}>
+      <View style={[styles.section, CARD_SHADOW]}>
         <View style={[styles.secHeader, { justifyContent: 'space-between' }]}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <CalendarCheck2 size={16} color="#22C55E" />
+            <CalendarCheck2 size={16} color={COLORS.primary} />
             <Text style={styles.secTitle}>DAVOMAT JURNALI</Text>
           </View>
           <TouchableOpacity style={styles.miniActionBtn} onPress={handleCheckIn}>
@@ -246,9 +266,9 @@ export const KoproqScreen: React.FC = () => {
       </View>
 
       {/* Kunlik Hisobotlar */}
-      <View style={styles.section}>
+      <View style={[styles.section, CARD_SHADOW]}>
         <View style={styles.secHeader}>
-          <ClipboardList size={16} color="#38BDF8" />
+          <ClipboardList size={16} color={COLORS.sky} />
           <Text style={styles.secTitle}>KUNLIK HISOBOTLAR ({reports.length})</Text>
         </View>
         {reports.length === 0 ? (
@@ -268,9 +288,9 @@ export const KoproqScreen: React.FC = () => {
       </View>
 
       {/* Filiallar */}
-      <View style={styles.section}>
+      <View style={[styles.section, CARD_SHADOW]}>
         <View style={styles.secHeader}>
-          <Building2 size={16} color="#A78BFA" />
+          <Building2 size={16} color={COLORS.purple} />
           <Text style={styles.secTitle}>FILIALLAR HOLATI ({branches.length})</Text>
         </View>
         {branches.map((b) => (
@@ -279,29 +299,29 @@ export const KoproqScreen: React.FC = () => {
               <Text style={styles.rowText}>{b.name}</Text>
               <Text style={styles.rowTime}>{b.managerName}</Text>
             </View>
-            <Text style={{ color: '#22C55E', fontWeight: '700', fontSize: 12 }}>
-              {b.currentBirds.toLocaleString()} qush
-            </Text>
+            <View style={styles.birdPill}>
+              <Text style={styles.birdPillText}>{b.currentBirds.toLocaleString()} qush</Text>
+            </View>
           </View>
         ))}
       </View>
 
       {/* Shaxsiy Zametkalar */}
-      <View style={styles.section}>
+      <View style={[styles.section, CARD_SHADOW]}>
         <View style={styles.secHeader}>
-          <StickyNote size={16} color="#F59E0B" />
+          <StickyNote size={16} color={COLORS.amber} />
           <Text style={styles.secTitle}>SHAXSIY ZAMETKALAR</Text>
         </View>
         <View style={styles.noteInputRow}>
           <TextInput
             style={styles.noteInput}
             placeholder="Yangi zametka..."
-            placeholderTextColor="#64748B"
+            placeholderTextColor={COLORS.textDim}
             value={noteText}
             onChangeText={setNoteText}
           />
           <TouchableOpacity style={styles.noteAddBtn} onPress={handleAddNote}>
-            <Text style={{ color: '#0F172A', fontWeight: '800' }}>+</Text>
+            <Text style={{ color: '#090E1A', fontWeight: '800', fontSize: 18 }}>+</Text>
           </TouchableOpacity>
         </View>
         {notes.map((n) => (
@@ -310,34 +330,40 @@ export const KoproqScreen: React.FC = () => {
               <Text style={styles.noteText}>{n.content}</Text>
               <Text style={styles.rowTime}>{n.createdAt}</Text>
             </View>
-            <TouchableOpacity onPress={() => handleDeleteNote(n.id)}>
-              <Trash2 size={16} color="#EF4444" />
+            <TouchableOpacity onPress={() => handleDeleteNote(n.id)} style={{ padding: 6 }}>
+              <Trash2 size={16} color={COLORS.danger} />
             </TouchableOpacity>
           </View>
         ))}
       </View>
 
       {/* Profil, Parol & Chiqish */}
-      <View style={styles.profileCard}>
-        <Text style={styles.profileName}>{user?.fullName}</Text>
-        <Text style={styles.profileRole}>
-          {user ? ROLE_LABELS[user.role] || user.role : ''} • @{user?.username}
-        </Text>
+      <View style={[styles.profileCard, CARD_SHADOW]}>
+        <View style={styles.profileTop}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>{initials}</Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.profileName}>{user?.fullName}</Text>
+            <Text style={styles.profileRole}>
+              {user ? ROLE_LABELS[user.role] || user.role : ''} • @{user?.username}
+            </Text>
+          </View>
+        </View>
 
-        <View style={{ flexDirection: 'row', gap: 10, marginTop: 14 }}>
+        <View style={{ flexDirection: 'row', gap: 10, marginTop: 16 }}>
           <TouchableOpacity style={styles.pwBtn} onPress={() => setPwModal(true)}>
-            <KeyRound size={16} color="#CBD5E1" />
-            <Text style={styles.pwText}>Parol</Text>
+            <KeyRound size={16} color={COLORS.textMuted} />
+            <Text style={styles.pwText}>Parolni o‘zgartirish</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
-            <LogOut size={16} color="#EF4444" />
+          <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
+            <LogOut size={16} color={COLORS.danger} />
             <Text style={styles.logoutText}>Chiqish</Text>
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* Change Password Modal */}
       <Modal visible={pwModal} transparent animationType="fade">
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
@@ -345,7 +371,7 @@ export const KoproqScreen: React.FC = () => {
             <TextInput
               style={styles.noteInput}
               placeholder="Hozirgi parol"
-              placeholderTextColor="#64748B"
+              placeholderTextColor={COLORS.textDim}
               secureTextEntry
               value={oldPw}
               onChangeText={setOldPw}
@@ -354,20 +380,20 @@ export const KoproqScreen: React.FC = () => {
             <TextInput
               style={styles.noteInput}
               placeholder="Yangi parol"
-              placeholderTextColor="#64748B"
+              placeholderTextColor={COLORS.textDim}
               secureTextEntry
               value={newPw}
               onChangeText={setNewPw}
             />
             <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginTop: 14 }}>
               <TouchableOpacity onPress={() => setPwModal(false)} style={{ padding: 10 }}>
-                <Text style={{ color: '#94A3B8', fontWeight: '600' }}>Bekor</Text>
+                <Text style={{ color: COLORS.textMuted, fontWeight: '600' }}>Bekor</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={handleChangePassword}
-                style={{ backgroundColor: '#22C55E', paddingHorizontal: 18, paddingVertical: 10, borderRadius: 10 }}
+                style={{ backgroundColor: COLORS.primary, paddingHorizontal: 18, paddingVertical: 10, borderRadius: 10 }}
               >
-                <Text style={{ color: '#0F172A', fontWeight: '700' }}>Saqlash</Text>
+                <Text style={{ color: '#090E1A', fontWeight: '800' }}>Saqlash</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -378,70 +404,85 @@ export const KoproqScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0F172A' },
-  photoBtnRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
+  container: { flex: 1, backgroundColor: COLORS.bg },
+  photoBtnRow: { flexDirection: 'row', gap: 10, marginBottom: 14 },
   photoCard: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    backgroundColor: '#22C55E',
-    borderRadius: 14,
+    backgroundColor: COLORS.primary,
+    borderRadius: 15,
     padding: 14,
   },
-  photoTitle: { color: '#0F172A', fontSize: 15, fontWeight: '800' },
-  photoSub: { color: '#0F172A', fontSize: 11, opacity: 0.8 },
+  photoIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: 'rgba(9, 14, 26, 0.14)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  photoTitle: { color: '#090E1A', fontSize: 15, fontWeight: '800' },
+  photoSub: { color: '#090E1A', fontSize: 11, opacity: 0.8 },
   photoItem: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
     paddingVertical: 8,
     borderTopWidth: 1,
-    borderTopColor: '#0F172A',
+    borderTopColor: COLORS.border,
   },
-  thumb: { width: 44, height: 44, borderRadius: 8, backgroundColor: '#0F172A' },
+  thumb: { width: 46, height: 46, borderRadius: 9, backgroundColor: COLORS.bg },
   section: {
-    backgroundColor: '#1E293B',
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 14,
+    backgroundColor: COLORS.surface,
+    borderRadius: 15,
+    padding: 15,
+    marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: COLORS.border,
   },
   secHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 },
-  secTitle: { color: '#94A3B8', fontSize: 12, fontWeight: '700', letterSpacing: 0.6 },
+  secTitle: { color: COLORS.textMuted, fontSize: 11, fontWeight: '800', letterSpacing: 0.8 },
   miniActionBtn: {
-    backgroundColor: 'rgba(34,197,94,0.15)',
+    backgroundColor: COLORS.primarySoft,
     borderWidth: 1,
-    borderColor: '#22C55E',
+    borderColor: COLORS.primary,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 8,
   },
-  miniActionText: { color: '#22C55E', fontSize: 11, fontWeight: '700' },
+  miniActionText: { color: COLORS.primary, fontSize: 11, fontWeight: '700' },
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: 9,
     borderTopWidth: 1,
-    borderTopColor: '#0F172A',
+    borderTopColor: COLORS.border,
   },
-  rowText: { color: '#F8FAFC', fontSize: 13, fontWeight: '600' },
-  rowTime: { color: '#94A3B8', fontSize: 12 },
-  emptyText: { color: '#64748B', fontSize: 12 },
+  rowText: { color: COLORS.text, fontSize: 13, fontWeight: '600' },
+  rowTime: { color: COLORS.textMuted, fontSize: 12 },
+  birdPill: {
+    backgroundColor: COLORS.primarySoft,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  birdPillText: { color: COLORS.primary, fontWeight: '700', fontSize: 11 },
+  emptyText: { color: COLORS.textDim, fontSize: 12 },
   noteInputRow: { flexDirection: 'row', gap: 8, marginBottom: 8 },
   noteInput: {
     flex: 1,
-    backgroundColor: '#0F172A',
+    backgroundColor: COLORS.bg,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: COLORS.borderStrong,
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    color: '#F8FAFC',
+    color: COLORS.text,
   },
   noteAddBtn: {
-    backgroundColor: '#F59E0B',
+    backgroundColor: COLORS.amber,
     width: 42,
     borderRadius: 10,
     alignItems: 'center',
@@ -453,51 +494,65 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 8,
     borderTopWidth: 1,
-    borderTopColor: '#0F172A',
+    borderTopColor: COLORS.border,
   },
-  noteText: { color: '#E2E8F0', fontSize: 13 },
+  noteText: { color: COLORS.text, fontSize: 13 },
   profileCard: {
-    backgroundColor: '#1E293B',
-    borderRadius: 14,
+    backgroundColor: COLORS.surface,
+    borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: COLORS.border,
   },
-  profileName: { color: '#F8FAFC', fontSize: 16, fontWeight: '700' },
-  profileRole: { color: '#22C55E', fontSize: 12, marginTop: 2 },
+  profileTop: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  avatar: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: COLORS.primarySoft,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarText: { color: COLORS.primary, fontSize: 16, fontWeight: '800' },
+  profileName: { color: COLORS.text, fontSize: 16, fontWeight: '700' },
+  profileRole: { color: COLORS.primary, fontSize: 12, marginTop: 2 },
   pwBtn: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    backgroundColor: '#0F172A',
+    backgroundColor: COLORS.bg,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: COLORS.borderStrong,
     borderRadius: 10,
     paddingVertical: 12,
   },
-  pwText: { color: '#CBD5E1', fontWeight: '700' },
+  pwText: { color: COLORS.textMuted, fontWeight: '700', fontSize: 12 },
   logoutBtn: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: 'rgba(239,68,68,0.12)',
+    backgroundColor: COLORS.dangerSoft,
     borderWidth: 1,
-    borderColor: '#EF4444',
+    borderColor: COLORS.danger,
     borderRadius: 10,
     paddingVertical: 12,
   },
-  logoutText: { color: '#EF4444', fontWeight: '700' },
-  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.65)', justifyContent: 'center', padding: 20 },
+  logoutText: { color: COLORS.danger, fontWeight: '700', fontSize: 13 },
+  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.72)', justifyContent: 'center', padding: 20 },
   modalCard: {
-    backgroundColor: '#1E293B',
-    borderRadius: 16,
+    ...CONTAINER_MAX,
+    maxWidth: 420,
+    backgroundColor: COLORS.surface,
+    borderRadius: 18,
     padding: 20,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: COLORS.borderStrong,
   },
-  modalTitle: { color: '#F8FAFC', fontSize: 17, fontWeight: '700', marginBottom: 14 },
+  modalTitle: { color: COLORS.text, fontSize: 17, fontWeight: '700', marginBottom: 14 },
 });

@@ -11,10 +11,11 @@ import {
   Alert,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { Clock, CheckCircle2, CalendarCheck2, ClipboardList, Edit2, Plus } from 'lucide-react-native';
+import { Clock, CheckCircle2, CalendarCheck2, ClipboardList, Edit2, Plus, Bell } from 'lucide-react-native';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { SlesarMilestone } from '../types';
+import { COLORS, CONTAINER_MAX, CARD_SHADOW } from '../theme';
 
 export const AsosiyScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const { user } = useAuth();
@@ -22,17 +23,14 @@ export const AsosiyScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [attendanceToday, setAttendanceToday] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Edit time modal
   const [editingItem, setEditingItem] = useState<SlesarMilestone | null>(null);
   const [editTime, setEditTime] = useState('');
 
-  // Add milestone modal
   const [addOpen, setAddOpen] = useState(false);
   const [newTime, setNewTime] = useState('');
   const [newTitle, setNewTitle] = useState('');
   const [newDesc, setNewDesc] = useState('');
 
-  // Quick Daily Report modal
   const [reportOpen, setReportOpen] = useState(false);
   const [repBuilding, setRepBuilding] = useState('1-Bino');
   const [repEggs, setRepEggs] = useState('');
@@ -72,6 +70,10 @@ export const AsosiyScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     setRefreshing(false);
   };
 
+  const doneCount = milestones.filter((m) => m.status === 'bajarildi').length;
+  const totalCount = milestones.length;
+  const progressPct = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0;
+
   const nextStep = milestones.find(
     (m) => m.status === 'kutilmoqda' || m.status === 'ogohlantirildi'
   );
@@ -98,7 +100,6 @@ export const AsosiyScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         notes: 'Mobil ilovadan bajarildi',
       });
       await loadData();
-      Alert.alert('Bajarildi', 'Texnologik bosqich muvaffaqiyatli yakunlandi!');
     } catch {
       Alert.alert('Xatolik', 'Bosqichni saqlashda muammo yuz berdi');
     }
@@ -163,74 +164,107 @@ export const AsosiyScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     <ScrollView
       style={styles.container}
       contentContainerStyle={styles.content}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#22C55E" />}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />}
     >
-      {/* Quick Status Pills */}
-      <View style={styles.pillsRow}>
+      {/* Quick Actions + Progress Bar */}
+      <View style={styles.topActionsRow}>
         <TouchableOpacity
-          style={[styles.pill, attendanceToday ? styles.pillSuccess : styles.pillWarn]}
+          style={[styles.actionCard, attendanceToday ? styles.actionCardSuccess : styles.actionCardWarn]}
           onPress={handleCheckIn}
         >
-          <CalendarCheck2 size={15} color={attendanceToday ? '#22C55E' : '#F59E0B'} />
-          <Text style={[styles.pillText, { color: attendanceToday ? '#22C55E' : '#F59E0B' }]}>
-            {attendanceToday ? `Kelgan: ${attendanceToday}` : 'Davomat belgilash'}
-          </Text>
+          <View style={[styles.actionIconBox, { backgroundColor: attendanceToday ? COLORS.primarySoft : COLORS.amberSoft }]}>
+            <CalendarCheck2 size={18} color={attendanceToday ? COLORS.primary : COLORS.amber} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.actionLabel}>Davomat</Text>
+            <Text style={[styles.actionValue, { color: attendanceToday ? COLORS.primary : COLORS.amber }]}>
+              {attendanceToday ? `Kelgan: ${attendanceToday}` : 'Belgilash'}
+            </Text>
+          </View>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.pill}
-          onPress={() => setReportOpen(true)}
-        >
-          <ClipboardList size={15} color="#38BDF8" />
-          <Text style={[styles.pillText, { color: '#E2E8F0' }]}>Kunlik Hisobot</Text>
+        <TouchableOpacity style={styles.actionCard} onPress={() => setReportOpen(true)}>
+          <View style={[styles.actionIconBox, { backgroundColor: COLORS.skySoft }]}>
+            <ClipboardList size={18} color={COLORS.sky} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.actionLabel}>Kunlik Reja</Text>
+            <Text style={[styles.actionValue, { color: COLORS.sky }]}>Hisobot kiritish</Text>
+          </View>
         </TouchableOpacity>
       </View>
 
-      {/* Main Card: NAVBATDAGI TEXNOLOGIK BOSQICH */}
-      {nextStep ? (
-        <View style={styles.heroCard}>
-          <View style={styles.heroHeader}>
-            <View style={styles.heroBadge}>
-              <Clock size={14} color="#F59E0B" />
-              <Text style={styles.heroBadgeText}>NAVBATDAGI BOSQICH</Text>
-            </View>
-            <Text style={styles.heroAlertTime}>Signal: {nextStep.alertTime}</Text>
-          </View>
-
-          <Text style={styles.heroTitle}>
-            {nextStep.time} — {nextStep.title}
+      {/* Progress Strip */}
+      <View style={styles.progressBox}>
+        <View style={styles.progressHeader}>
+          <Text style={styles.progressLabel}>Bugungi grafik bajarilishi</Text>
+          <Text style={styles.progressPct}>
+            {doneCount}/{totalCount} ({progressPct}%)
           </Text>
-          {!!nextStep.description && (
-            <Text style={styles.heroDesc}>{nextStep.description}</Text>
-          )}
+        </View>
+        <View style={styles.progressTrack}>
+          <View style={[styles.progressFill, { width: `${progressPct}%` as any }]} />
+        </View>
+      </View>
 
-          <View style={styles.heroActions}>
-            <TouchableOpacity
-              style={styles.editTimeBtn}
-              onPress={() => {
-                setEditingItem(nextStep);
-                setEditTime(nextStep.time);
-              }}
-            >
-              <Edit2 size={16} color="#CBD5E1" />
-              <Text style={styles.editTimeText}>Vaqt</Text>
-            </TouchableOpacity>
+      {/* Hero Card: NAVBATDAGI TEXNOLOGIK BOSQICH */}
+      {nextStep ? (
+        <View style={[styles.heroCard, CARD_SHADOW]}>
+          <View style={styles.heroAccentStrip} />
+          <View style={styles.heroBody}>
+            <View style={styles.heroHeader}>
+              <View style={styles.heroBadge}>
+                <Clock size={13} color={COLORS.amber} />
+                <Text style={styles.heroBadgeText}>NAVBATDAGI BOSQICH</Text>
+              </View>
+              <View style={styles.signalPill}>
+                <Bell size={11} color={COLORS.amber} />
+                <Text style={styles.heroAlertTime}>{nextStep.alertTime}</Text>
+              </View>
+            </View>
 
-            <TouchableOpacity
-              style={styles.completeBtn}
-              onPress={() => handleComplete(nextStep.id)}
-            >
-              <CheckCircle2 size={20} color="#0F172A" strokeWidth={2.5} />
-              <Text style={styles.completeBtnText}>Bajarildi</Text>
-            </TouchableOpacity>
+            <View style={styles.heroTitleRow}>
+              <View style={styles.heroTimeTag}>
+                <Text style={styles.heroTimeText}>{nextStep.time}</Text>
+              </View>
+              <Text style={styles.heroTitle}>{nextStep.title}</Text>
+            </View>
+
+            {!!nextStep.description && (
+              <Text style={styles.heroDesc}>{nextStep.description}</Text>
+            )}
+
+            <View style={styles.heroActions}>
+              <TouchableOpacity
+                style={styles.editTimeBtn}
+                onPress={() => {
+                  setEditingItem(nextStep);
+                  setEditTime(nextStep.time);
+                }}
+              >
+                <Edit2 size={15} color={COLORS.textMuted} />
+                <Text style={styles.editTimeText}>Vaqt</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.completeBtn}
+                onPress={() => handleComplete(nextStep.id)}
+              >
+                <CheckCircle2 size={20} color="#090E1A" strokeWidth={2.5} />
+                <Text style={styles.completeBtnText}>Bajarildi</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       ) : (
-        <View style={[styles.heroCard, { borderColor: '#22C55E' }]}>
-          <Text style={[styles.heroTitle, { color: '#22C55E' }]}>
-            Barcha bosqichlar bajarildi!
-          </Text>
-          <Text style={styles.heroDesc}>Bugungi texnologik grafik to‘liq yakunlandi.</Text>
+        <View style={[styles.heroCard, { borderColor: COLORS.primary }]}>
+          <View style={[styles.heroAccentStrip, { backgroundColor: COLORS.primary }]} />
+          <View style={styles.heroBody}>
+            <Text style={[styles.heroTitle, { color: COLORS.primary }]}>
+              Barcha bosqichlar bajarildi!
+            </Text>
+            <Text style={styles.heroDesc}>Bugungi texnologik grafik to‘liq yakunlandi.</Text>
+          </View>
         </View>
       )}
 
@@ -238,24 +272,34 @@ export const AsosiyScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       <View style={styles.sectionHeaderRow}>
         <Text style={styles.sectionTitle}>TEXNOLOGIK ISH GRAFIGI ({milestones.length})</Text>
         <TouchableOpacity style={styles.addStepBtn} onPress={() => setAddOpen(true)}>
-          <Plus size={14} color="#0F172A" strokeWidth={2.5} />
+          <Plus size={14} color="#090E1A" strokeWidth={2.5} />
           <Text style={styles.addStepText}>Bosqich</Text>
         </TouchableOpacity>
       </View>
 
       {milestones.map((m) => {
         const done = m.status === 'bajarildi';
+        const isNext = nextStep?.id === m.id;
         return (
-          <View key={String(m.id)} style={[styles.stepRow, done && styles.stepRowDone]}>
-            <View style={styles.stepTimeBox}>
-              <Text style={[styles.stepTime, done && { color: '#64748B' }]}>{m.time}</Text>
+          <View
+            key={String(m.id)}
+            style={[
+              styles.stepRow,
+              done && styles.stepRowDone,
+              isNext && styles.stepRowActive,
+            ]}
+          >
+            <View style={[styles.stepTimeBox, isNext && styles.stepTimeBoxActive]}>
+              <Text style={[styles.stepTime, done && { color: COLORS.textDim }]}>{m.time}</Text>
             </View>
             <View style={styles.stepInfo}>
               <Text style={[styles.stepTitle, done && styles.stepTitleDone]}>{m.title}</Text>
               {!!m.description && <Text style={styles.stepDesc}>{m.description}</Text>}
             </View>
             {done ? (
-              <CheckCircle2 size={20} color="#22C55E" />
+              <View style={styles.doneIconWrap}>
+                <CheckCircle2 size={18} color={COLORS.primary} />
+              </View>
             ) : (
               <TouchableOpacity style={styles.miniDoneBtn} onPress={() => handleComplete(m.id)}>
                 <Text style={styles.miniDoneText}>Bajarildi</Text>
@@ -265,7 +309,7 @@ export const AsosiyScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         );
       })}
 
-      {/* Edit Time Modal */}
+      {/* Modals */}
       <Modal visible={!!editingItem} transparent animationType="fade">
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
@@ -275,7 +319,7 @@ export const AsosiyScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               value={editTime}
               onChangeText={setEditTime}
               placeholder="Masalan: 07:30"
-              placeholderTextColor="#64748B"
+              placeholderTextColor={COLORS.textDim}
             />
             <View style={styles.modalBtns}>
               <TouchableOpacity style={styles.cancelBtn} onPress={() => setEditingItem(null)}>
@@ -289,7 +333,6 @@ export const AsosiyScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         </View>
       </Modal>
 
-      {/* Add Milestone Modal */}
       <Modal visible={addOpen} transparent animationType="slide">
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
@@ -299,21 +342,21 @@ export const AsosiyScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               value={newTime}
               onChangeText={setNewTime}
               placeholder="Vaqt (masalan: 16:30)"
-              placeholderTextColor="#64748B"
+              placeholderTextColor={COLORS.textDim}
             />
             <TextInput
               style={styles.modalInput}
               value={newTitle}
               onChangeText={setNewTitle}
               placeholder="Bosqich nomi"
-              placeholderTextColor="#64748B"
+              placeholderTextColor={COLORS.textDim}
             />
             <TextInput
               style={styles.modalInput}
               value={newDesc}
               onChangeText={setNewDesc}
               placeholder="Izoh (ixtiyoriy)"
-              placeholderTextColor="#64748B"
+              placeholderTextColor={COLORS.textDim}
             />
             <View style={styles.modalBtns}>
               <TouchableOpacity style={styles.cancelBtn} onPress={() => setAddOpen(false)}>
@@ -327,7 +370,6 @@ export const AsosiyScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         </View>
       </Modal>
 
-      {/* Quick Daily Report Modal */}
       <Modal visible={reportOpen} transparent animationType="slide">
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
@@ -337,7 +379,7 @@ export const AsosiyScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               value={repBuilding}
               onChangeText={setRepBuilding}
               placeholder="Bino (masalan: 1-Bino)"
-              placeholderTextColor="#64748B"
+              placeholderTextColor={COLORS.textDim}
             />
             <TextInput
               style={styles.modalInput}
@@ -345,7 +387,7 @@ export const AsosiyScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               onChangeText={setRepEggs}
               keyboardType="numeric"
               placeholder="Yig‘ilgan tuxum (dona)"
-              placeholderTextColor="#64748B"
+              placeholderTextColor={COLORS.textDim}
             />
             <TextInput
               style={styles.modalInput}
@@ -353,7 +395,7 @@ export const AsosiyScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               onChangeText={setRepFeed}
               keyboardType="numeric"
               placeholder="Sarflangan yem (kg)"
-              placeholderTextColor="#64748B"
+              placeholderTextColor={COLORS.textDim}
             />
             <View style={{ flexDirection: 'row', gap: 10 }}>
               <TextInput
@@ -362,7 +404,7 @@ export const AsosiyScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 onChangeText={setRepMortality}
                 keyboardType="numeric"
                 placeholder="Nobud (dona)"
-                placeholderTextColor="#64748B"
+                placeholderTextColor={COLORS.textDim}
               />
               <TextInput
                 style={[styles.modalInput, { flex: 1 }]}
@@ -370,7 +412,7 @@ export const AsosiyScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 onChangeText={setRepTemp}
                 keyboardType="numeric"
                 placeholder="Harorat (°C)"
-                placeholderTextColor="#64748B"
+                placeholderTextColor={COLORS.textDim}
               />
             </View>
             <TextInput
@@ -378,7 +420,7 @@ export const AsosiyScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               value={repNotes}
               onChangeText={setRepNotes}
               placeholder="Izoh (ixtiyoriy)"
-              placeholderTextColor="#64748B"
+              placeholderTextColor={COLORS.textDim}
             />
             <View style={styles.modalBtns}>
               <TouchableOpacity style={styles.cancelBtn} onPress={() => setReportOpen(false)}>
@@ -396,31 +438,60 @@ export const AsosiyScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0F172A' },
-  content: { padding: 16, paddingBottom: 32 },
-  pillsRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
-  pill: {
+  container: { flex: 1, backgroundColor: COLORS.bg },
+  content: { ...CONTAINER_MAX, padding: 16, paddingBottom: 36 },
+  topActionsRow: { flexDirection: 'row', gap: 10, marginBottom: 12 },
+  actionCard: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#1E293B',
+    gap: 10,
+    backgroundColor: COLORS.surface,
     borderWidth: 1,
-    borderColor: '#334155',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    borderColor: COLORS.border,
+    padding: 12,
+    borderRadius: 14,
+  },
+  actionCardSuccess: { borderColor: 'rgba(34,197,94,0.35)' },
+  actionCardWarn: { borderColor: 'rgba(245,158,11,0.35)' },
+  actionIconBox: {
+    width: 36,
+    height: 36,
     borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  pillSuccess: { borderColor: '#22C55E', backgroundColor: 'rgba(34,197,94,0.1)' },
-  pillWarn: { borderColor: '#F59E0B', backgroundColor: 'rgba(245,158,11,0.1)' },
-  pillText: { fontSize: 13, fontWeight: '600' },
+  actionLabel: { color: COLORS.textMuted, fontSize: 11, fontWeight: '600' },
+  actionValue: { fontSize: 13, fontWeight: '700', marginTop: 1 },
+  progressBox: {
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+  },
+  progressHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
+  progressLabel: { color: COLORS.textMuted, fontSize: 12, fontWeight: '600' },
+  progressPct: { color: COLORS.primary, fontSize: 12, fontWeight: '800' },
+  progressTrack: {
+    height: 6,
+    backgroundColor: COLORS.surfaceAlt,
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  progressFill: { height: '100%', backgroundColor: COLORS.primary, borderRadius: 4 },
   heroCard: {
-    backgroundColor: '#1E293B',
+    flexDirection: 'row',
+    backgroundColor: COLORS.surface,
     borderRadius: 18,
-    padding: 18,
-    borderWidth: 1.5,
-    borderColor: '#F59E0B',
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.45)',
     marginBottom: 22,
+    overflow: 'hidden',
   },
+  heroAccentStrip: { width: 5, backgroundColor: COLORS.amber },
+  heroBody: { flex: 1, padding: 16 },
   heroHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -428,35 +499,54 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   heroBadge: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  heroBadgeText: { color: '#F59E0B', fontSize: 11, fontWeight: '800', letterSpacing: 0.6 },
-  heroAlertTime: { color: '#94A3B8', fontSize: 11 },
-  heroTitle: { color: '#F8FAFC', fontSize: 20, fontWeight: '800', marginBottom: 6 },
-  heroDesc: { color: '#94A3B8', fontSize: 14, marginBottom: 16 },
+  heroBadgeText: { color: COLORS.amber, fontSize: 11, fontWeight: '800', letterSpacing: 0.7 },
+  signalPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: COLORS.amberSoft,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  heroAlertTime: { color: COLORS.amber, fontSize: 11, fontWeight: '700' },
+  heroTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 6 },
+  heroTimeTag: {
+    backgroundColor: COLORS.amberSoft,
+    borderWidth: 1,
+    borderColor: 'rgba(245,158,11,0.35)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  heroTimeText: { color: COLORS.amber, fontSize: 15, fontWeight: '800' },
+  heroTitle: { flex: 1, color: COLORS.text, fontSize: 17, fontWeight: '800' },
+  heroDesc: { color: COLORS.textMuted, fontSize: 13, marginBottom: 14 },
   heroActions: { flexDirection: 'row', gap: 10 },
   editTimeBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    backgroundColor: '#0F172A',
+    backgroundColor: COLORS.bg,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: COLORS.borderStrong,
     borderRadius: 12,
     paddingHorizontal: 14,
-    height: 48,
+    height: 46,
   },
-  editTimeText: { color: '#CBD5E1', fontWeight: '600', fontSize: 14 },
+  editTimeText: { color: COLORS.textMuted, fontWeight: '600', fontSize: 13 },
   completeBtn: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#22C55E',
+    backgroundColor: COLORS.primary,
     borderRadius: 12,
-    height: 48,
+    height: 46,
   },
-  completeBtnText: { color: '#0F172A', fontWeight: '800', fontSize: 16 },
+  completeBtnText: { color: '#090E1A', fontWeight: '800', fontSize: 15 },
   sectionHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -464,80 +554,102 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   sectionTitle: {
-    color: '#94A3B8',
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 0.8,
+    color: COLORS.textMuted,
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.9,
   },
   addStepBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#22C55E',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
-  },
-  addStepText: { color: '#0F172A', fontWeight: '800', fontSize: 12 },
-  stepRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#1E293B',
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: '#334155',
-    gap: 12,
-  },
-  stepRowDone: { opacity: 0.55 },
-  stepTimeBox: { width: 48 },
-  stepTime: { color: '#F59E0B', fontWeight: '800', fontSize: 14 },
-  stepInfo: { flex: 1 },
-  stepTitle: { color: '#F8FAFC', fontSize: 14, fontWeight: '600' },
-  stepTitleDone: { textDecorationLine: 'line-through', color: '#94A3B8' },
-  stepDesc: { color: '#64748B', fontSize: 12, marginTop: 2 },
-  miniDoneBtn: {
-    backgroundColor: 'rgba(34,197,94,0.15)',
-    borderWidth: 1,
-    borderColor: '#22C55E',
+    backgroundColor: COLORS.primary,
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 8,
   },
-  miniDoneText: { color: '#22C55E', fontSize: 12, fontWeight: '700' },
+  addStepText: { color: '#090E1A', fontWeight: '800', fontSize: 12 },
+  stepRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.surface,
+    borderRadius: 14,
+    padding: 13,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    gap: 12,
+  },
+  stepRowActive: {
+    borderColor: 'rgba(245, 158, 11, 0.4)',
+    backgroundColor: COLORS.surfaceAlt,
+  },
+  stepRowDone: { opacity: 0.55 },
+  stepTimeBox: {
+    backgroundColor: COLORS.bg,
+    paddingHorizontal: 9,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  stepTimeBoxActive: { borderColor: 'rgba(245,158,11,0.4)' },
+  stepTime: { color: COLORS.amber, fontWeight: '800', fontSize: 13 },
+  stepInfo: { flex: 1 },
+  stepTitle: { color: COLORS.text, fontSize: 14, fontWeight: '600' },
+  stepTitleDone: { textDecorationLine: 'line-through', color: COLORS.textMuted },
+  stepDesc: { color: COLORS.textDim, fontSize: 12, marginTop: 2 },
+  doneIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: COLORS.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  miniDoneBtn: {
+    backgroundColor: COLORS.primarySoft,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+    paddingHorizontal: 11,
+    paddingVertical: 7,
+    borderRadius: 9,
+  },
+  miniDoneText: { color: COLORS.primary, fontSize: 12, fontWeight: '700' },
   modalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.65)',
+    backgroundColor: 'rgba(0,0,0,0.72)',
     justifyContent: 'center',
     padding: 20,
   },
   modalCard: {
-    backgroundColor: '#1E293B',
-    borderRadius: 16,
+    ...CONTAINER_MAX,
+    maxWidth: 460,
+    backgroundColor: COLORS.surface,
+    borderRadius: 18,
     padding: 20,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: COLORS.borderStrong,
   },
-  modalTitle: { color: '#F8FAFC', fontSize: 17, fontWeight: '700', marginBottom: 14 },
+  modalTitle: { color: COLORS.text, fontSize: 17, fontWeight: '700', marginBottom: 14 },
   modalInput: {
-    backgroundColor: '#0F172A',
+    backgroundColor: COLORS.bg,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: COLORS.borderStrong,
     borderRadius: 10,
     padding: 12,
-    color: '#F8FAFC',
-    fontSize: 15,
-    marginBottom: 12,
+    color: COLORS.text,
+    fontSize: 14,
+    marginBottom: 10,
   },
-  modalBtns: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10 },
+  modalBtns: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginTop: 6 },
   cancelBtn: { paddingHorizontal: 16, paddingVertical: 10 },
-  cancelBtnText: { color: '#94A3B8', fontWeight: '600' },
+  cancelBtnText: { color: COLORS.textMuted, fontWeight: '600' },
   saveBtn: {
-    backgroundColor: '#22C55E',
+    backgroundColor: COLORS.primary,
     paddingHorizontal: 18,
     paddingVertical: 10,
     borderRadius: 10,
   },
-  saveBtnText: { color: '#0F172A', fontWeight: '700' },
+  saveBtnText: { color: '#090E1A', fontWeight: '800' },
 });

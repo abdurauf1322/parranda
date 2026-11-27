@@ -13,25 +13,27 @@ import { TopshiriqlarScreen } from './src/screens/TopshiriqlarScreen';
 import { OmborVaznScreen } from './src/screens/OmborVaznScreen';
 import { ChatScreen } from './src/screens/ChatScreen';
 import { KoproqScreen } from './src/screens/KoproqScreen';
+import { COLORS } from './src/theme';
 
 const Tab = createBottomTabNavigator();
 
 function MainTabs() {
   return (
-    <View style={{ flex: 1, backgroundColor: '#0F172A' }}>
+    <View style={{ flex: 1, backgroundColor: COLORS.bg }}>
       <TopBar />
       <Tab.Navigator
         screenOptions={{
           headerShown: false,
           tabBarStyle: {
-            backgroundColor: '#0F172A',
-            borderTopColor: '#1E293B',
-            height: 62,
+            backgroundColor: COLORS.bg,
+            borderTopColor: COLORS.border,
+            borderTopWidth: 1,
+            height: 64,
             paddingBottom: 8,
             paddingTop: 6,
           },
-          tabBarActiveTintColor: '#22C55E',
-          tabBarInactiveTintColor: '#64748B',
+          tabBarActiveTintColor: COLORS.primary,
+          tabBarInactiveTintColor: COLORS.textDim,
           tabBarLabelStyle: { fontSize: 11, fontWeight: '700' },
         }}
       >
@@ -82,8 +84,8 @@ function RootNavigator() {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, backgroundColor: '#0F172A', justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#22C55E" />
+      <View style={{ flex: 1, backgroundColor: COLORS.bg, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
       </View>
     );
   }
@@ -98,7 +100,7 @@ function RootNavigator() {
 export default function App() {
   return (
     <SafeAreaProvider>
-      <SafeAreaView style={{ flex: 1, backgroundColor: '#0F172A' }}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.bg }}>
         <StatusBar barStyle="light-content" />
         <AuthProvider>
           <RootNavigator />

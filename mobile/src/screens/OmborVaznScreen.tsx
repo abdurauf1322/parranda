@@ -15,6 +15,7 @@ import { Boxes, Scale, Plus } from 'lucide-react-native';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { InventoryItem, ChickenWeightRecord } from '../types';
+import { COLORS, CONTAINER_MAX, CARD_SHADOW } from '../theme';
 
 export const OmborVaznScreen: React.FC = () => {
   const { user } = useAuth();
@@ -23,18 +24,15 @@ export const OmborVaznScreen: React.FC = () => {
   const [weights, setWeights] = useState<ChickenWeightRecord[]>([]);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Add inventory modal
   const [invModal, setInvModal] = useState(false);
   const [invName, setInvName] = useState('');
   const [invCategory, setInvCategory] = useState('yem');
   const [invQty, setInvQty] = useState('');
   const [invUnit, setInvUnit] = useState('kg');
 
-  // Edit quantity modal
   const [editInv, setEditInv] = useState<InventoryItem | null>(null);
   const [editQty, setEditQty] = useState('');
 
-  // Add weight modal
   const [weightModal, setWeightModal] = useState(false);
   const [wBuilding, setWBuilding] = useState('1-Bino');
   const [wCage, setWCage] = useState('Qafas-A1');
@@ -127,48 +125,50 @@ export const OmborVaznScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <View style={styles.topRow}>
-        <View style={styles.switchRow}>
-          <TouchableOpacity
-            style={[styles.switchBtn, tab === 'inventory' && styles.switchActive]}
-            onPress={() => setTab('inventory')}
-          >
-            <Boxes size={16} color={tab === 'inventory' ? '#0F172A' : '#94A3B8'} />
-            <Text style={[styles.switchText, tab === 'inventory' && styles.switchTextActive]}>
-              Ombor ({inventory.length})
-            </Text>
-          </TouchableOpacity>
+      <View style={styles.topWrap}>
+        <View style={styles.topRow}>
+          <View style={styles.switchRow}>
+            <TouchableOpacity
+              style={[styles.switchBtn, tab === 'inventory' && styles.switchActive]}
+              onPress={() => setTab('inventory')}
+            >
+              <Boxes size={16} color={tab === 'inventory' ? '#090E1A' : COLORS.textMuted} />
+              <Text style={[styles.switchText, tab === 'inventory' && styles.switchTextActive]}>
+                Ombor ({inventory.length})
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.switchBtn, tab === 'weights' && styles.switchActive]}
+              onPress={() => setTab('weights')}
+            >
+              <Scale size={16} color={tab === 'weights' ? '#090E1A' : COLORS.textMuted} />
+              <Text style={[styles.switchText, tab === 'weights' && styles.switchTextActive]}>
+                Vazn ({weights.length})
+              </Text>
+            </TouchableOpacity>
+          </View>
 
           <TouchableOpacity
-            style={[styles.switchBtn, tab === 'weights' && styles.switchActive]}
-            onPress={() => setTab('weights')}
+            style={styles.addBtn}
+            onPress={() => (tab === 'inventory' ? setInvModal(true) : setWeightModal(true))}
           >
-            <Scale size={16} color={tab === 'weights' ? '#0F172A' : '#94A3B8'} />
-            <Text style={[styles.switchText, tab === 'weights' && styles.switchTextActive]}>
-              Vazn ({weights.length})
-            </Text>
+            <Plus size={18} color="#090E1A" strokeWidth={2.5} />
           </TouchableOpacity>
         </View>
-
-        <TouchableOpacity
-          style={styles.addBtn}
-          onPress={() => (tab === 'inventory' ? setInvModal(true) : setWeightModal(true))}
-        >
-          <Plus size={18} color="#0F172A" strokeWidth={2.5} />
-        </TouchableOpacity>
       </View>
 
       {tab === 'inventory' ? (
         <FlatList
           data={inventory}
           keyExtractor={(item) => String(item.id)}
-          contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#22C55E" />}
+          contentContainerStyle={[CONTAINER_MAX, { padding: 16, paddingBottom: 32 }]}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />}
           renderItem={({ item }) => {
             const low = item.minThreshold != null && item.quantity <= item.minThreshold;
             return (
               <TouchableOpacity
-                style={[styles.card, low && { borderColor: '#EF4444' }]}
+                style={[styles.card, CARD_SHADOW, low && { borderColor: COLORS.danger }]}
                 onPress={() => {
                   setEditInv(item);
                   setEditQty(String(item.quantity));
@@ -176,9 +176,11 @@ export const OmborVaznScreen: React.FC = () => {
               >
                 <View style={styles.rowBetween}>
                   <Text style={[styles.itemTitle, { flex: 1, marginRight: 8 }]}>{item.name}</Text>
-                  <Text style={[styles.qty, low && { color: '#EF4444' }]}>
-                    {item.quantity} {item.unit}
-                  </Text>
+                  <View style={[styles.qtyBadge, low && { backgroundColor: COLORS.dangerSoft }]}>
+                    <Text style={[styles.qty, low && { color: COLORS.danger }]}>
+                      {item.quantity} {item.unit}
+                    </Text>
+                  </View>
                 </View>
                 <Text style={styles.sub}>
                   {item.category} • Filial: {item.branchId} • Tahrirlash uchun bosing
@@ -192,26 +194,34 @@ export const OmborVaznScreen: React.FC = () => {
         <FlatList
           data={weights}
           keyExtractor={(item) => String(item.id)}
-          contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#22C55E" />}
-          renderItem={({ item }) => (
-            <View style={styles.card}>
-              <View style={styles.rowBetween}>
-                <Text style={styles.itemTitle}>
-                  {item.building} • {item.cageNumber}
+          contentContainerStyle={[CONTAINER_MAX, { padding: 16, paddingBottom: 32 }]}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />}
+          renderItem={({ item }) => {
+            const diff = Math.round(item.avgWeightGrams - item.targetWeightGrams);
+            return (
+              <View style={[styles.card, CARD_SHADOW]}>
+                <View style={styles.rowBetween}>
+                  <Text style={styles.itemTitle}>
+                    {item.building} • {item.cageNumber}
+                  </Text>
+                  <View style={styles.qtyBadge}>
+                    <Text style={styles.qty}>{item.avgWeightGrams} g</Text>
+                  </View>
+                </View>
+                <Text style={styles.sub}>
+                  Yosh: {item.birdAgeDays} kun • Me’yor: {item.targetWeightGrams} g ({diff >= 0 ? `+${diff}g` : `${diff}g`})
                 </Text>
-                <Text style={styles.qty}>{item.avgWeightGrams} g</Text>
+                <Text style={[styles.sub, { color: COLORS.textDim }]}>
+                  {item.measuredBy} • {item.measuredDate}
+                </Text>
               </View>
-              <Text style={styles.sub}>
-                Yosh: {item.birdAgeDays} kun • Me’yor: {item.targetWeightGrams} g • {item.measuredBy} • {item.measuredDate}
-              </Text>
-            </View>
-          )}
+            );
+          }}
           ListEmptyComponent={<Text style={styles.empty}>Vazn o‘lchovlari yo‘q</Text>}
         />
       )}
 
-      {/* Add Inventory Modal */}
+      {/* Modals */}
       <Modal visible={invModal} transparent animationType="slide">
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
@@ -219,7 +229,7 @@ export const OmborVaznScreen: React.FC = () => {
             <TextInput
               style={styles.input}
               placeholder="Mahsulot nomi (masalan: Kombikorm PK-1)"
-              placeholderTextColor="#64748B"
+              placeholderTextColor={COLORS.textDim}
               value={invName}
               onChangeText={setInvName}
             />
@@ -230,7 +240,7 @@ export const OmborVaznScreen: React.FC = () => {
                   style={[styles.chip, invCategory === c && styles.chipActive]}
                   onPress={() => setInvCategory(c)}
                 >
-                  <Text style={[styles.chipText, invCategory === c && { color: '#0F172A' }]}>{c}</Text>
+                  <Text style={[styles.chipText, invCategory === c && { color: '#090E1A' }]}>{c}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -238,7 +248,7 @@ export const OmborVaznScreen: React.FC = () => {
               <TextInput
                 style={[styles.input, { flex: 1 }]}
                 placeholder="Miqdor"
-                placeholderTextColor="#64748B"
+                placeholderTextColor={COLORS.textDim}
                 keyboardType="numeric"
                 value={invQty}
                 onChangeText={setInvQty}
@@ -246,24 +256,23 @@ export const OmborVaznScreen: React.FC = () => {
               <TextInput
                 style={[styles.input, { width: 90 }]}
                 placeholder="Birlik (kg)"
-                placeholderTextColor="#64748B"
+                placeholderTextColor={COLORS.textDim}
                 value={invUnit}
                 onChangeText={setInvUnit}
               />
             </View>
             <View style={styles.modalBtns}>
               <TouchableOpacity style={styles.cancelBtn} onPress={() => setInvModal(false)}>
-                <Text style={{ color: '#94A3B8', fontWeight: '600' }}>Bekor</Text>
+                <Text style={{ color: COLORS.textMuted, fontWeight: '600' }}>Bekor</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.saveBtn} onPress={handleAddInventory}>
-                <Text style={{ color: '#0F172A', fontWeight: '700' }}>Saqlash</Text>
+                <Text style={{ color: '#090E1A', fontWeight: '800' }}>Saqlash</Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
       </Modal>
 
-      {/* Edit Inventory Quantity Modal */}
       <Modal visible={!!editInv} transparent animationType="fade">
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
@@ -274,21 +283,20 @@ export const OmborVaznScreen: React.FC = () => {
               value={editQty}
               onChangeText={setEditQty}
               placeholder="Yangi miqdor"
-              placeholderTextColor="#64748B"
+              placeholderTextColor={COLORS.textDim}
             />
             <View style={styles.modalBtns}>
               <TouchableOpacity style={styles.cancelBtn} onPress={() => setEditInv(null)}>
-                <Text style={{ color: '#94A3B8', fontWeight: '600' }}>Bekor</Text>
+                <Text style={{ color: COLORS.textMuted, fontWeight: '600' }}>Bekor</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.saveBtn} onPress={handleUpdateQty}>
-                <Text style={{ color: '#0F172A', fontWeight: '700' }}>Yangilash</Text>
+                <Text style={{ color: '#090E1A', fontWeight: '800' }}>Yangilash</Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
       </Modal>
 
-      {/* Add Weight Modal */}
       <Modal visible={weightModal} transparent animationType="slide">
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
@@ -297,14 +305,14 @@ export const OmborVaznScreen: React.FC = () => {
               <TextInput
                 style={[styles.input, { flex: 1 }]}
                 placeholder="Bino (1-Bino)"
-                placeholderTextColor="#64748B"
+                placeholderTextColor={COLORS.textDim}
                 value={wBuilding}
                 onChangeText={setWBuilding}
               />
               <TextInput
                 style={[styles.input, { flex: 1 }]}
                 placeholder="Qafas (Qafas-A1)"
-                placeholderTextColor="#64748B"
+                placeholderTextColor={COLORS.textDim}
                 value={wCage}
                 onChangeText={setWCage}
               />
@@ -313,7 +321,7 @@ export const OmborVaznScreen: React.FC = () => {
               <TextInput
                 style={[styles.input, { flex: 1 }]}
                 placeholder="Yoshi (kun)"
-                placeholderTextColor="#64748B"
+                placeholderTextColor={COLORS.textDim}
                 keyboardType="numeric"
                 value={wAge}
                 onChangeText={setWAge}
@@ -321,7 +329,7 @@ export const OmborVaznScreen: React.FC = () => {
               <TextInput
                 style={[styles.input, { flex: 1 }]}
                 placeholder="O‘rtacha vazn (g)"
-                placeholderTextColor="#64748B"
+                placeholderTextColor={COLORS.textDim}
                 keyboardType="numeric"
                 value={wAvg}
                 onChangeText={setWAvg}
@@ -330,17 +338,17 @@ export const OmborVaznScreen: React.FC = () => {
             <TextInput
               style={styles.input}
               placeholder="Me’yor vazn (g)"
-              placeholderTextColor="#64748B"
+              placeholderTextColor={COLORS.textDim}
               keyboardType="numeric"
               value={wTarget}
               onChangeText={setWTarget}
             />
             <View style={styles.modalBtns}>
               <TouchableOpacity style={styles.cancelBtn} onPress={() => setWeightModal(false)}>
-                <Text style={{ color: '#94A3B8', fontWeight: '600' }}>Bekor</Text>
+                <Text style={{ color: COLORS.textMuted, fontWeight: '600' }}>Bekor</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.saveBtn} onPress={handleAddWeight}>
-                <Text style={{ color: '#0F172A', fontWeight: '700' }}>Saqlash</Text>
+                <Text style={{ color: '#090E1A', fontWeight: '800' }}>Saqlash</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -351,19 +359,16 @@ export const OmborVaznScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0F172A' },
-  topRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginHorizontal: 16,
-    marginTop: 16,
-  },
+  container: { flex: 1, backgroundColor: COLORS.bg },
+  topWrap: { ...CONTAINER_MAX, paddingHorizontal: 16, paddingTop: 14 },
+  topRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   switchRow: {
     flex: 1,
     flexDirection: 'row',
-    gap: 8,
-    backgroundColor: '#1E293B',
+    gap: 6,
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.border,
     padding: 4,
     borderRadius: 12,
   },
@@ -376,60 +381,68 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 9,
   },
-  switchActive: { backgroundColor: '#22C55E' },
-  switchText: { color: '#94A3B8', fontWeight: '700', fontSize: 13 },
-  switchTextActive: { color: '#0F172A' },
+  switchActive: { backgroundColor: COLORS.primary },
+  switchText: { color: COLORS.textMuted, fontWeight: '700', fontSize: 13 },
+  switchTextActive: { color: '#090E1A' },
   addBtn: {
-    width: 44,
-    height: 44,
+    width: 46,
+    height: 46,
     borderRadius: 12,
-    backgroundColor: '#22C55E',
+    backgroundColor: COLORS.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
   card: {
-    backgroundColor: '#1E293B',
-    borderRadius: 12,
+    backgroundColor: COLORS.surface,
+    borderRadius: 14,
     padding: 14,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: COLORS.border,
   },
   rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  itemTitle: { color: '#F8FAFC', fontSize: 15, fontWeight: '700' },
-  qty: { color: '#22C55E', fontSize: 15, fontWeight: '800' },
-  sub: { color: '#94A3B8', fontSize: 12, marginTop: 4 },
-  empty: { color: '#64748B', textAlign: 'center', marginTop: 40 },
-  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.65)', justifyContent: 'center', padding: 20 },
+  itemTitle: { color: COLORS.text, fontSize: 15, fontWeight: '700' },
+  qtyBadge: {
+    backgroundColor: COLORS.primarySoft,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  qty: { color: COLORS.primary, fontSize: 14, fontWeight: '800' },
+  sub: { color: COLORS.textMuted, fontSize: 12, marginTop: 5 },
+  empty: { color: COLORS.textDim, textAlign: 'center', marginTop: 40 },
+  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.72)', justifyContent: 'center', padding: 20 },
   modalCard: {
-    backgroundColor: '#1E293B',
-    borderRadius: 16,
+    ...CONTAINER_MAX,
+    maxWidth: 460,
+    backgroundColor: COLORS.surface,
+    borderRadius: 18,
     padding: 20,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: COLORS.borderStrong,
   },
-  modalTitle: { color: '#F8FAFC', fontSize: 17, fontWeight: '700', marginBottom: 14 },
+  modalTitle: { color: COLORS.text, fontSize: 17, fontWeight: '700', marginBottom: 14 },
   input: {
-    backgroundColor: '#0F172A',
+    backgroundColor: COLORS.bg,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: COLORS.borderStrong,
     borderRadius: 10,
     padding: 12,
-    color: '#F8FAFC',
+    color: COLORS.text,
     marginBottom: 10,
   },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 10 },
   chip: {
-    backgroundColor: '#0F172A',
+    backgroundColor: COLORS.bg,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: COLORS.borderStrong,
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 8,
   },
-  chipActive: { backgroundColor: '#22C55E', borderColor: '#22C55E' },
-  chipText: { color: '#CBD5E1', fontSize: 12, fontWeight: '600' },
+  chipActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
+  chipText: { color: COLORS.textMuted, fontSize: 12, fontWeight: '600' },
   modalBtns: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginTop: 4 },
   cancelBtn: { paddingHorizontal: 16, paddingVertical: 10 },
-  saveBtn: { backgroundColor: '#22C55E', paddingHorizontal: 18, paddingVertical: 10, borderRadius: 10 },
+  saveBtn: { backgroundColor: COLORS.primary, paddingHorizontal: 18, paddingVertical: 10, borderRadius: 10 },
 });

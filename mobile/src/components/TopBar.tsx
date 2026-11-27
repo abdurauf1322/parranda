@@ -1,13 +1,20 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Alert, Platform } from 'react-native';
 import { LogOut, Egg } from 'lucide-react-native';
 import { useAuth } from '../context/AuthContext';
 import { ROLE_LABELS } from '../types';
+import { COLORS, CONTAINER_MAX } from '../theme';
 
 export const TopBar: React.FC = () => {
   const { user, logout } = useAuth();
 
   const handleLogout = () => {
+    if (Platform.OS === 'web') {
+      if (window.confirm('Tizimdan chiqishni xohlaysizmi?')) {
+        logout();
+      }
+      return;
+    }
     Alert.alert('Chiqish', 'Tizimdan chiqishni xohlaysizmi?', [
       { text: 'Bekor qilish', style: 'cancel' },
       { text: 'Chiqish', style: 'destructive', onPress: logout },
@@ -15,43 +22,54 @@ export const TopBar: React.FC = () => {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.brand}>
-        <View style={styles.logoBox}>
-          <Egg size={18} color="#0F172A" strokeWidth={2.5} />
-        </View>
-        <Text style={styles.title}>UYCHI PARRANDA</Text>
-      </View>
-
-      {user && (
-        <View style={styles.right}>
-          <View style={styles.badge}>
-            <Text style={styles.userName} numberOfLines={1}>
-              {user.fullName.split(' ')[0]}
-            </Text>
-            <Text style={styles.roleText}>
-              {ROLE_LABELS[user.role] || user.role}
-            </Text>
+    <View style={styles.outer}>
+      <View style={styles.inner}>
+        <View style={styles.brand}>
+          <View style={styles.logoBox}>
+            <Egg size={18} color="#090E1A" strokeWidth={2.5} />
           </View>
-          <TouchableOpacity onPress={handleLogout} style={styles.logoutBtn}>
-            <LogOut size={18} color="#94A3B8" />
-          </TouchableOpacity>
+          <View>
+            <Text style={styles.title}>UYCHI PARRANDA</Text>
+            <View style={styles.liveRow}>
+              <View style={styles.liveDot} />
+              <Text style={styles.liveText}>Jonli boshqaruv</Text>
+            </View>
+          </View>
         </View>
-      )}
+
+        {user && (
+          <View style={styles.right}>
+            <View style={styles.badge}>
+              <Text style={styles.userName} numberOfLines={1}>
+                {user.fullName.split(' ')[0]}
+              </Text>
+              <Text style={styles.roleText}>
+                {ROLE_LABELS[user.role] || user.role}
+              </Text>
+            </View>
+            <TouchableOpacity onPress={handleLogout} style={styles.logoutBtn}>
+              <LogOut size={17} color={COLORS.textMuted} />
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  outer: {
+    backgroundColor: COLORS.bg,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  inner: {
+    ...CONTAINER_MAX,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#0F172A',
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#1E293B',
+    paddingVertical: 11,
   },
   brand: {
     flexDirection: 'row',
@@ -59,18 +77,35 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   logoBox: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    backgroundColor: '#F59E0B',
+    width: 34,
+    height: 34,
+    borderRadius: 11,
+    backgroundColor: COLORS.amber,
     alignItems: 'center',
     justifyContent: 'center',
   },
   title: {
-    color: '#F8FAFC',
+    color: COLORS.text,
     fontSize: 15,
     fontWeight: '800',
-    letterSpacing: 0.4,
+    letterSpacing: 0.5,
+  },
+  liveRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: 1,
+  },
+  liveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: COLORS.primary,
+  },
+  liveText: {
+    color: COLORS.textDim,
+    fontSize: 10,
+    fontWeight: '600',
   },
   right: {
     flexDirection: 'row',
@@ -78,26 +113,30 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   badge: {
-    backgroundColor: '#1E293B',
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.border,
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 10,
     alignItems: 'flex-end',
   },
   userName: {
-    color: '#F8FAFC',
+    color: COLORS.text,
     fontSize: 12,
     fontWeight: '700',
-    maxWidth: 110,
+    maxWidth: 120,
   },
   roleText: {
-    color: '#22C55E',
+    color: COLORS.primary,
     fontSize: 10,
     fontWeight: '600',
   },
   logoutBtn: {
-    padding: 8,
-    backgroundColor: '#1E293B',
+    padding: 9,
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.border,
     borderRadius: 10,
   },
 });
