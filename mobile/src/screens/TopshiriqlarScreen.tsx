@@ -15,11 +15,13 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Plus, CheckCircle2, Clock, Star } from 'lucide-react-native';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { getRoleConfig } from '../config/roleConfig';
 import { TaskItem, ROLE_LABELS } from '../types';
 import { COLORS, CONTAINER_MAX, CARD_SHADOW } from '../theme';
 
 export const TopshiriqlarScreen: React.FC = () => {
   const { user } = useAuth();
+  const rc = getRoleConfig(user?.role);
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [filter, setFilter] = useState<'all' | 'pending' | 'done' | 'rated'>('all');
   const [roleFilter, setRoleFilter] = useState<string>('all');
@@ -37,7 +39,7 @@ export const TopshiriqlarScreen: React.FC = () => {
 
   const loadTasks = async () => {
     try {
-      const res = await api.get('/api/tasks');
+      const res = await api.get(`/api/tasks?viewerRole=${user?.role || 'slesar'}`);
       if (Array.isArray(res.data)) setTasks(res.data);
     } catch (e) {
       console.warn('Topshiriqlar yuklashda xatolik:', e);
@@ -121,10 +123,12 @@ export const TopshiriqlarScreen: React.FC = () => {
       <View style={styles.topWrap}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Topshiriqlar ({filtered.length})</Text>
-          <TouchableOpacity style={styles.addBtn} onPress={() => setModalOpen(true)}>
-            <Plus size={16} color="#090E1A" strokeWidth={2.5} />
-            <Text style={styles.addBtnText}>Yangi</Text>
-          </TouchableOpacity>
+          {rc.canAssignTasks && (
+            <TouchableOpacity style={styles.addBtn} onPress={() => setModalOpen(true)}>
+              <Plus size={16} color="#090E1A" strokeWidth={2.5} />
+              <Text style={styles.addBtnText}>Yangi</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 6 }}>
@@ -148,21 +152,23 @@ export const TopshiriqlarScreen: React.FC = () => {
           </View>
         </ScrollView>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 4 }}>
-          <View style={styles.filterRow}>
-            {['all', 'slesar', 'elektrik', 'veterinar', 'ish_boshqaruvchi', 'qorovul'].map((r) => (
-              <TouchableOpacity
-                key={r}
-                style={[styles.roleFilterChip, roleFilter === r && styles.roleFilterActive]}
-                onPress={() => setRoleFilter(r)}
-              >
-                <Text style={[styles.filterText, roleFilter === r && { color: COLORS.sky, fontWeight: '700' }]}>
-                  {r === 'all' ? 'Barcha lavozimlar' : ROLE_LABELS[r] || r}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </ScrollView>
+        {rc.canAssignTasks && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 4 }}>
+            <View style={styles.filterRow}>
+              {['all', 'slesar', 'elektrik', 'veterinar', 'haydovchi_tuxum', 'haydovchi_yem', 'qorovul', 'oshpaz', 'tozalik'].map((r) => (
+                <TouchableOpacity
+                  key={r}
+                  style={[styles.roleFilterChip, roleFilter === r && styles.roleFilterActive]}
+                  onPress={() => setRoleFilter(r)}
+                >
+                  <Text style={[styles.filterText, roleFilter === r && { color: COLORS.sky, fontWeight: '700' }]}>
+                    {r === 'all' ? 'Barcha lavozimlar' : ROLE_LABELS[r] || r}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </ScrollView>
+        )}
       </View>
 
       <FlatList
@@ -239,7 +245,7 @@ export const TopshiriqlarScreen: React.FC = () => {
                 </TouchableOpacity>
               )}
 
-              {done && !rated && (
+              {done && !rated && rc.canEvaluateTasks && (
                 <TouchableOpacity
                   style={styles.evalBtn}
                   onPress={() => {
@@ -295,7 +301,7 @@ export const TopshiriqlarScreen: React.FC = () => {
             </View>
             <Text style={styles.label}>Kimga biriktiriladi:</Text>
             <View style={styles.rolesWrap}>
-              {['slesar', 'veterinar', 'elektrik', 'ish_boshqaruvchi', 'qorovul'].map((r) => (
+              {['slesar', 'veterinar', 'elektrik', 'haydovchi_tuxum', 'haydovchi_yem', 'qorovul', 'oshpaz', 'tozalik', 'ish_boshqaruvchi'].map((r) => (
                 <TouchableOpacity
                   key={r}
                   style={[styles.roleChip, role === r && styles.roleChipActive]}

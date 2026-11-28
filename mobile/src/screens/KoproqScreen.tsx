@@ -33,6 +33,7 @@ import {
   sendBackgroundTestNotification,
 } from '../services/notifications';
 import { useAuth } from '../context/AuthContext';
+import { getRoleConfig } from '../config/roleConfig';
 import {
   AttendanceRecord,
   PersonalNote,
@@ -45,6 +46,7 @@ import { COLORS, CONTAINER_MAX, CARD_SHADOW } from '../theme';
 
 export const KoproqScreen: React.FC = () => {
   const { user, logout } = useAuth();
+  const rc = getRoleConfig(user?.role);
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
   const [notes, setNotes] = useState<PersonalNote[]>([]);
   const [photos, setPhotos] = useState<PhotoReport[]>([]);
@@ -65,7 +67,12 @@ export const KoproqScreen: React.FC = () => {
         api.get('/api/daily-reports'),
         api.get('/api/branches'),
       ]);
-      if (Array.isArray(aRes.data)) setAttendance(aRes.data.slice(0, 6));
+      if (Array.isArray(aRes.data)) {
+        const list = rc.showAttendanceRosterInMore
+          ? aRes.data
+          : aRes.data.filter((a: any) => a.userId === user?.id);
+        setAttendance(list.slice(0, 6));
+      }
       if (Array.isArray(nRes.data)) setNotes(nRes.data);
       if (Array.isArray(pRes.data)) setPhotos(pRes.data.slice(0, 5));
       if (Array.isArray(rRes.data)) setReports(rRes.data.slice(0, 5));
@@ -99,8 +106,8 @@ export const KoproqScreen: React.FC = () => {
       await api.post('/api/photos', {
         uploaderName: user?.fullName || 'Xodim',
         uploaderRole: user?.role || 'slesar',
-        title: 'Mobil foto-hisobot',
-        category: 'sanitariya',
+        title: `${rc.title} — foto-hisobot`,
+        category: rc.defaultPhotoCategory,
         building: '1-Bino',
         imageUrl: `data:image/jpeg;base64,${base64}`,
         notes: 'Mobil ilovadan yuborildi',
@@ -295,45 +302,49 @@ export const KoproqScreen: React.FC = () => {
       </View>
 
       {/* Kunlik Hisobotlar */}
-      <View style={[styles.section, CARD_SHADOW]}>
-        <View style={styles.secHeader}>
-          <ClipboardList size={16} color={COLORS.sky} />
-          <Text style={styles.secTitle}>KUNLIK HISOBOTLAR ({reports.length})</Text>
+      {rc.showDailyReportsInMore && (
+        <View style={[styles.section, CARD_SHADOW]}>
+          <View style={styles.secHeader}>
+            <ClipboardList size={16} color={COLORS.sky} />
+            <Text style={styles.secTitle}>KUNLIK HISOBOTLAR ({reports.length})</Text>
+          </View>
+          {reports.length === 0 ? (
+            <Text style={styles.emptyText}>Hozircha kunlik hisobotlar yo‘q</Text>
+          ) : (
+            reports.map((r) => (
+              <View key={r.id} style={styles.row}>
+                <Text style={styles.rowText}>
+                  {r.building} ({r.date})
+                </Text>
+                <Text style={styles.rowTime}>
+                  🥚 {r.eggsCollectedTotal} • 🌾 {r.feedConsumedKg}kg
+                </Text>
+              </View>
+            ))
+          )}
         </View>
-        {reports.length === 0 ? (
-          <Text style={styles.emptyText}>Hozircha kunlik hisobotlar yo‘q</Text>
-        ) : (
-          reports.map((r) => (
-            <View key={r.id} style={styles.row}>
-              <Text style={styles.rowText}>
-                {r.building} ({r.date})
-              </Text>
-              <Text style={styles.rowTime}>
-                🥚 {r.eggsCollectedTotal} • 🌾 {r.feedConsumedKg}kg
-              </Text>
-            </View>
-          ))
-        )}
-      </View>
+      )}
 
       {/* Filiallar */}
-      <View style={[styles.section, CARD_SHADOW]}>
-        <View style={styles.secHeader}>
-          <Building2 size={16} color={COLORS.purple} />
-          <Text style={styles.secTitle}>FILIALLAR HOLATI ({branches.length})</Text>
-        </View>
-        {branches.map((b) => (
-          <View key={b.branchId} style={styles.row}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.rowText}>{b.name}</Text>
-              <Text style={styles.rowTime}>{b.managerName}</Text>
-            </View>
-            <View style={styles.birdPill}>
-              <Text style={styles.birdPillText}>{b.currentBirds.toLocaleString()} qush</Text>
-            </View>
+      {rc.showBranchesInMore && (
+        <View style={[styles.section, CARD_SHADOW]}>
+          <View style={styles.secHeader}>
+            <Building2 size={16} color={COLORS.purple} />
+            <Text style={styles.secTitle}>FILIALLAR HOLATI ({branches.length})</Text>
           </View>
-        ))}
-      </View>
+          {branches.map((b) => (
+            <View key={b.branchId} style={styles.row}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.rowText}>{b.name}</Text>
+                <Text style={styles.rowTime}>{b.managerName}</Text>
+              </View>
+              <View style={styles.birdPill}>
+                <Text style={styles.birdPillText}>{b.currentBirds.toLocaleString()} qush</Text>
+              </View>
+            </View>
+          ))}
+        </View>
+      )}
 
       {/* Shaxsiy Zametkalar */}
       <View style={[styles.section, CARD_SHADOW]}>

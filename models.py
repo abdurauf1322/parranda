@@ -153,6 +153,7 @@ class SlesarMilestoneModel(db.Model):
     __tablename__ = 'slesar_milestones'
 
     id = db.Column(db.Integer, primary_key=True)
+    role = db.Column(db.String(64), default='slesar', index=True)
     time = db.Column(db.String(8), nullable=False)       # "07:00"
     alert_time = db.Column(db.String(8), nullable=False) # "06:57"
     title = db.Column(db.String(256), nullable=False)
@@ -164,6 +165,7 @@ class SlesarMilestoneModel(db.Model):
     def to_dict(self):
         return {
             'id': self.id,
+            'role': self.role or 'slesar',
             'time': self.time,
             'alertTime': self.alert_time,
             'title': self.title,

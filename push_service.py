@@ -420,13 +420,14 @@ def check_scheduled_milestones_and_alerts(app):
         ).all()
 
         for m in pending_milestones:
+            target_role = m.role or 'slesar'
             payload = {
-                'title': f'⏰ Slesar Ogohlantirish ({m.time})',
+                'title': f'⏰ Ogohlantirish ({m.time})',
                 'body': f'Vaqt: {m.time} - {m.title}. Ishni boshlashga 3 daqiqa qoldi!',
                 'icon': '/pwa-192x192.png',
-                'url': '/slesar'
+                'url': '/'
             }
-            broadcast_push_notification(app, payload, role='slesar')
+            broadcast_push_notification(app, payload, role=target_role)
             m.status = 'ogohlantirildi'
             db.session.commit()
 

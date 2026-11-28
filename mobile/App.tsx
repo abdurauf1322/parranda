@@ -13,11 +13,16 @@ import { TopshiriqlarScreen } from './src/screens/TopshiriqlarScreen';
 import { OmborVaznScreen } from './src/screens/OmborVaznScreen';
 import { ChatScreen } from './src/screens/ChatScreen';
 import { KoproqScreen } from './src/screens/KoproqScreen';
+import { getRoleConfig } from './src/config/roleConfig';
 import { COLORS } from './src/theme';
 
 const Tab = createBottomTabNavigator();
 
 function MainTabs() {
+  const { user } = useAuth();
+  const rc = getRoleConfig(user?.role);
+  const allowed = rc.allowedTabs;
+
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.bg }}>
       <TopBar />
@@ -37,43 +42,53 @@ function MainTabs() {
           tabBarLabelStyle: { fontSize: 11, fontWeight: '700' },
         }}
       >
-        <Tab.Screen
-          name="Asosiy"
-          component={AsosiyScreen}
-          options={{
-            tabBarIcon: ({ color, size }) => <Home color={color} size={size} />,
-          }}
-        />
-        <Tab.Screen
-          name="Topshiriqlar"
-          component={TopshiriqlarScreen}
-          options={{
-            tabBarIcon: ({ color, size }) => <CheckSquare color={color} size={size} />,
-          }}
-        />
-        <Tab.Screen
-          name="OmborVazn"
-          component={OmborVaznScreen}
-          options={{
-            title: 'Ombor & Vazn',
-            tabBarIcon: ({ color, size }) => <Boxes color={color} size={size} />,
-          }}
-        />
-        <Tab.Screen
-          name="Chat"
-          component={ChatScreen}
-          options={{
-            tabBarIcon: ({ color, size }) => <MessageSquare color={color} size={size} />,
-          }}
-        />
-        <Tab.Screen
-          name="Koproq"
-          component={KoproqScreen}
-          options={{
-            title: 'Ko‘proq',
-            tabBarIcon: ({ color, size }) => <Menu color={color} size={size} />,
-          }}
-        />
+        {allowed.includes('Asosiy') && (
+          <Tab.Screen
+            name="Asosiy"
+            component={AsosiyScreen}
+            options={{
+              tabBarIcon: ({ color, size }) => <Home color={color} size={size} />,
+            }}
+          />
+        )}
+        {allowed.includes('Topshiriqlar') && (
+          <Tab.Screen
+            name="Topshiriqlar"
+            component={TopshiriqlarScreen}
+            options={{
+              tabBarIcon: ({ color, size }) => <CheckSquare color={color} size={size} />,
+            }}
+          />
+        )}
+        {allowed.includes('OmborVazn') && (
+          <Tab.Screen
+            name="OmborVazn"
+            component={OmborVaznScreen}
+            options={{
+              title: rc.showWeightsTab && !rc.showInventoryTab ? 'Vazn' : rc.showInventoryTab && !rc.showWeightsTab ? 'Ombor' : 'Ombor & Vazn',
+              tabBarIcon: ({ color, size }) => <Boxes color={color} size={size} />,
+            }}
+          />
+        )}
+        {allowed.includes('Chat') && (
+          <Tab.Screen
+            name="Chat"
+            component={ChatScreen}
+            options={{
+              tabBarIcon: ({ color, size }) => <MessageSquare color={color} size={size} />,
+            }}
+          />
+        )}
+        {allowed.includes('Koproq') && (
+          <Tab.Screen
+            name="Koproq"
+            component={KoproqScreen}
+            options={{
+              title: 'Ko‘proq',
+              tabBarIcon: ({ color, size }) => <Menu color={color} size={size} />,
+            }}
+          />
+        )}
       </Tab.Navigator>
     </View>
   );

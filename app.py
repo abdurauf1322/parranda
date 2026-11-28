@@ -30,9 +30,23 @@ db.init_app(app)
 with app.app_context():
     try:
         db.create_all()
+        # Safe migration for role column on slesar_milestones
+        try:
+            from sqlalchemy import inspect, text
+            insp = inspect(db.engine)
+            cols = [c['name'] for c in insp.get_columns('slesar_milestones')]
+            if 'role' not in cols:
+                db.session.execute(text("ALTER TABLE slesar_milestones ADD COLUMN role VARCHAR(64) DEFAULT 'slesar'"))
+                db.session.commit()
+        except Exception as mig_err:
+            db.session.rollback()
+            print(f"[DB MIGRATION INFO] {mig_err}")
+
+        from seed_data import seed_database, ensure_role_milestones_seeded
         if User.query.count() == 0:
-            from seed_data import seed_database
             seed_database(app)
+        else:
+            ensure_role_milestones_seeded()
     except Exception as e:
         print(f"[DB WARNING] db.create_all() xatosi (baza ulanishi tekshirilishi kerak): {e}")
 
@@ -205,8 +219,16 @@ def attendance_check_in():
 # -------------------------------------------------------------
 
 @app.route('/api/slesar/milestones', methods=['GET'])
+@app.route('/api/milestones', methods=['GET'])
 def get_milestones():
-    milestones = SlesarMilestoneModel.query.order_by(SlesarMilestoneModel.time.asc()).all()
+    role_filter = request.args.get('role') or session.get('role')
+    query = SlesarMilestoneModel.query
+    if role_filter and role_filter != 'all':
+        query = query.filter(
+            (SlesarMilestoneModel.role == role_filter)
+            | ((SlesarMilestoneModel.role.is_(None)) & (role_filter == 'slesar'))
+        )
+    milestones = query.order_by(SlesarMilestoneModel.time.asc()).all()
     return jsonify([m.to_dict() for m in milestones])
 
 
@@ -249,10 +271,12 @@ def update_milestone(mid):
 
 
 @app.route('/api/slesar/milestones', methods=['POST'])
+@app.route('/api/milestones', methods=['POST'])
 def create_milestone():
     data = request.get_json() or {}
     t = (data.get('time') or '').strip()
     title = (data.get('title') or '').strip()
+    role = (data.get('role') or session.get('role') or 'slesar').strip()
     if not t or not title:
         return jsonify({'error': 'Vaqt va nom majburiy'}), 400
     alert_t = data.get('alertTime')
@@ -264,6 +288,7 @@ def create_milestone():
         except Exception:
             alert_t = t
     m = SlesarMilestoneModel(
+        role=role,
         time=t,
         alert_time=alert_t,
         title=title,
@@ -286,8 +311,14 @@ def delete_milestone(mid):
 
 
 @app.route('/api/slesar/milestones/reset', methods=['POST'])
+@app.route('/api/milestones/reset', methods=['POST'])
 def reset_milestones():
-    for m in SlesarMilestoneModel.query.all():
+    data = request.get_json(silent=True) or {}
+    role_filter = data.get('role') or request.args.get('role')
+    query = SlesarMilestoneModel.query
+    if role_filter and role_filter != 'all':
+        query = query.filter_by(role=role_filter)
+    for m in query.all():
         m.status = 'kutilmoqda'
         m.completed_at = None
     db.session.commit()
@@ -301,8 +332,11 @@ def reset_milestones():
 @app.route('/api/tasks', methods=['GET'])
 def get_tasks():
     role_filter = request.args.get('role')
+    viewer_role = request.args.get('viewerRole') or session.get('role')
     query = Task.query
-    if role_filter:
+    if viewer_role and viewer_role not in ('direktor', 'ish_boshqaruvchi'):
+        query = query.filter_by(assigned_to_role=viewer_role)
+    elif role_filter and role_filter != 'all':
         query = query.filter_by(assigned_to_role=role_filter)
     tasks = query.order_by(Task.id.desc()).all()
     return jsonify([t.to_dict() for t in tasks])

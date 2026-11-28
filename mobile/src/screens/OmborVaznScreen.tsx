@@ -16,6 +16,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Boxes, Scale, Plus, Search, Trash2, Edit2 } from 'lucide-react-native';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { getRoleConfig } from '../config/roleConfig';
 import { InventoryItem, ChickenWeightRecord } from '../types';
 import { COLORS, CONTAINER_MAX, CARD_SHADOW } from '../theme';
 
@@ -30,7 +31,12 @@ const BRANCH_OPTIONS = [
 
 export const OmborVaznScreen: React.FC = () => {
   const { user } = useAuth();
-  const [tab, setTab] = useState<'inventory' | 'weights'>('inventory');
+  const rc = getRoleConfig(user?.role);
+  const [tab, setTab] = useState<'inventory' | 'weights'>(
+    !rc.showInventoryTab || user?.role === 'veterinar' || user?.role === 'statistikachi'
+      ? 'weights'
+      : 'inventory'
+  );
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [weights, setWeights] = useState<ChickenWeightRecord[]>([]);
   const [branchFilter, setBranchFilter] = useState('all');
@@ -177,25 +183,29 @@ export const OmborVaznScreen: React.FC = () => {
       <View style={styles.topWrap}>
         <View style={styles.topRow}>
           <View style={styles.switchRow}>
-            <TouchableOpacity
-              style={[styles.switchBtn, tab === 'inventory' && styles.switchActive]}
-              onPress={() => setTab('inventory')}
-            >
-              <Boxes size={16} color={tab === 'inventory' ? '#090E1A' : COLORS.textMuted} />
-              <Text style={[styles.switchText, tab === 'inventory' && styles.switchTextActive]}>
-                Ombor ({filteredInventory.length})
-              </Text>
-            </TouchableOpacity>
+            {rc.showInventoryTab && (
+              <TouchableOpacity
+                style={[styles.switchBtn, tab === 'inventory' && styles.switchActive]}
+                onPress={() => setTab('inventory')}
+              >
+                <Boxes size={16} color={tab === 'inventory' ? '#090E1A' : COLORS.textMuted} />
+                <Text style={[styles.switchText, tab === 'inventory' && styles.switchTextActive]}>
+                  Ombor ({filteredInventory.length})
+                </Text>
+              </TouchableOpacity>
+            )}
 
-            <TouchableOpacity
-              style={[styles.switchBtn, tab === 'weights' && styles.switchActive]}
-              onPress={() => setTab('weights')}
-            >
-              <Scale size={16} color={tab === 'weights' ? '#090E1A' : COLORS.textMuted} />
-              <Text style={[styles.switchText, tab === 'weights' && styles.switchTextActive]}>
-                Vazn ({filteredWeights.length})
-              </Text>
-            </TouchableOpacity>
+            {rc.showWeightsTab && (
+              <TouchableOpacity
+                style={[styles.switchBtn, tab === 'weights' && styles.switchActive]}
+                onPress={() => setTab('weights')}
+              >
+                <Scale size={16} color={tab === 'weights' ? '#090E1A' : COLORS.textMuted} />
+                <Text style={[styles.switchText, tab === 'weights' && styles.switchTextActive]}>
+                  Vazn ({filteredWeights.length})
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
 
           <TouchableOpacity
